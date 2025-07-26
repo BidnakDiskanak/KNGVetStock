@@ -1,7 +1,8 @@
+import './globals.css';
 import type { Metadata } from 'next';
 import { UserProvider } from '@/contexts/UserProvider';
 import { Toaster } from '@/components/ui/toaster';
-import '@/app/globals.css';
+
 
 export const metadata: Metadata = {
   title: 'KNGVetStock',
