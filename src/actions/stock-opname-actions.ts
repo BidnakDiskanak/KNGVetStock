@@ -29,3 +29,14 @@ export async function createStockOpnameAction(formData: StockOpnameData): Promis
         opnameDate: Timestamp.fromDate(opnameDate), 
         createdAt: Timestamp.now(), // Tambahkan tanggal pembuatan record
     };
+
+    // Buat dokumen baru di koleksi 'stock-opnames'
+    // Firestore akan otomatis membuat ID unik untuk dokumen ini
+    await db.collection("stock-opnames").add(dataToSave);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error creating stock opname:", error);
+    return { success: false, error: error.message || "Gagal menyimpan data stock opname." };
+  }
+}
