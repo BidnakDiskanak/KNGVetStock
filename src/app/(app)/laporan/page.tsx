@@ -46,7 +46,7 @@ interface ReportData {
   keterangan?: string;
 }
 
-// Definisikan tipe data untuk pejabat, termasuk NIP
+// Definisikan tipe data untuk pejabat
 interface Officials {
     kepalaDinas?: string;
     kepalaBidang?: string;
@@ -234,12 +234,51 @@ export default function ReportPage() {
     doc.save(`laporan-stock-opname-${format(new Date(), "yyyy-MM-dd")}.pdf`);
   };
   
+  // --- PERUBAHAN DIMULAI DI SINI ---
+  // Definisikan kolom untuk tabel laporan di halaman web (dibuat lebih detail)
   const columns: ColumnDef<ReportData>[] = [
-    { accessorKey: "medicineName", header: "Nama Obat" },
-    { accessorKey: "keadaanBulanLaporanJml", header: "Stok Akhir" },
-    { accessorKey: "opnameDate", header: "Tanggal Catat" },
-    { accessorKey: "keterangan", header: "Keterangan" },
+    {
+        header: "Nama Obat",
+        accessorKey: "medicineName",
+    },
+    {
+        header: "Keadaan Bulan Lalu",
+        columns: [
+            { header: "Baik", accessorKey: "keadaanBulanLaluBaik" },
+            { header: "Rusak", accessorKey: "keadaanBulanLaluRusak" },
+            { header: "Jml", accessorKey: "keadaanBulanLaluJml" },
+        ],
+    },
+    {
+        header: "Pemasukan",
+        columns: [
+            { header: "Baik", accessorKey: "pemasukanBaik" },
+            { header: "Rusak", accessorKey: "pemasukanRusak" },
+            { header: "Jml", accessorKey: "pemasukanJml" },
+        ],
+    },
+    {
+        header: "Pengeluaran",
+        columns: [
+            { header: "Baik", accessorKey: "pengeluaranBaik" },
+            { header: "Rusak", accessorKey: "pengeluaranRusak" },
+            { header: "Jml", accessorKey: "pengeluaranJml" },
+        ],
+    },
+    {
+        header: "Keadaan Bulan Laporan",
+        columns: [
+            { header: "Baik", accessorKey: "keadaanBulanLaporanBaik" },
+            { header: "Rusak", accessorKey: "keadaanBulanLaporanRusak" },
+            { header: "Jml", accessorKey: "keadaanBulanLaporanJml" },
+        ],
+    },
+    {
+        header: "Expire Date",
+        accessorKey: "expireDate",
+    },
   ];
+  // --- PERUBAHAN SELESAI DI SINI ---
 
   return (
     <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
@@ -252,6 +291,7 @@ export default function ReportPage() {
         </div>
       </div>
 
+      {/* Bagian Pemilih Tanggal */}
       <div className="flex flex-col md:flex-row items-center gap-4 rounded-lg border p-4">
         <div className="flex flex-col space-y-2">
             <span className="text-sm font-medium">Tanggal Mulai</span>
@@ -298,6 +338,7 @@ export default function ReportPage() {
         </div>
       </div>
 
+      {/* Bagian Tabel Hasil Laporan */}
       <div className="pt-8">
         <DataTable data={reportData} columns={columns} filterColumn="medicineName" />
       </div>
