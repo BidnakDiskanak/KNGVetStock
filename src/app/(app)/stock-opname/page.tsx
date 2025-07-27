@@ -1,5 +1,49 @@
 "use client"
 
+// ... (semua import Anda yang sudah ada)
+import { StockOpnameForm } from './components/stock-opname-form'; // <-- TAMBAHKAN IMPORT INI
+
+export default function StockOpnamePage() {
+  // ... (semua state dan useEffect Anda yang sudah ada)
+
+  if (loading) {
+    // ... (kode loading skeleton Anda)
+  }
+
+  return (
+    <>
+      <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
+        <div className="flex items-center justify-between space-y-2">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Pencatatan Stock Opname</h2>
+            <p className="text-muted-foreground">
+              Masukkan data stok obat historis di sini.
+            </p>
+          </div>
+        </div>
+
+        {/* 1. LETAKKAN FORMULIR BARU DI SINI */}
+        <div className="rounded-lg border p-4">
+          <StockOpnameForm />
+        </div>
+
+        {/* 2. BAGIAN DAFTAR OBAT ANDA YANG SUDAH ADA */}
+        <div className="flex items-center justify-between space-y-2 pt-8">
+           <div>
+             <h2 className="text-2xl font-bold tracking-tight">Daftar Master Obat {user?.location || ''}</h2>
+             <p className="text-muted-foreground">
+               Berikut adalah daftar obat-obatan yang tersedia di lokasi Anda.
+             </p>
+           </div>
+        </div>
+        <DataTable data={medicines} columns={columns} onAdd={handleAdd} filterColumn="name"/>
+      </div>
+
+      {/* ... (sisa kode Anda untuk MedicineFormSheet dan AlertDialog) */}
+    </>
+  );
+}
+
 import { useEffect, useMemo, useState } from 'react';
 import { getColumns, type MedicineActionHandlers } from './components/columns';
 import { DataTable } from './components/data-table';
