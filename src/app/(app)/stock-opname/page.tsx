@@ -1,26 +1,26 @@
-"use client"
+"use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { getColumns, type MedicineActionHandlers } from './components/columns';
-import { DataTable } from './components/data-table';
-import type { Medicine } from '@/lib/types';
-import { collection, onSnapshot, query, doc, deleteDoc, where, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import type { StockOpname } from '@/lib/types'; // Anda perlu menambahkan tipe data ini
+
+import { useUser } from '@/contexts/UserProvider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MedicineFormSheet } from './components/medicine-form-sheet';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { useUser } from '@/contexts/UserProvider';
-// <-- TAMBAHKAN IMPORT INI
-import { StockOpnameForm } from './components/stock-opname-form'; 
+import { DataTable } from './components/data-table';
+import { getColumns, type StockOpnameActionHandlers } from './components/columns';
+import { StockOpnameFormSheet } from './components/stock-opname-form-sheet'; // Kita akan buat komponen ini
+import { deleteStockOpnameAction } from '@/actions/stock-opname-actions';
 
 export default function StockOpnamePage() {
-  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [stockOpnames, setStockOpnames] = useState<StockOpname[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
+  const [selectedOpname, setSelectedOpname] = useState<StockOpname | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [medicineToDelete, setMedicineToDelete] = useState<string | null>(null);
+  const [opnameToDelete, setOpnameToDelete] = useState<StockOpname | null>(null);
   const { toast } = useToast();
   const { user } = useUser();
 
@@ -30,30 +30,27 @@ export default function StockOpnamePage() {
         return;
     };
     
-    let medQuery;
-    if (user.role === 'admin') {
-      medQuery = query(collection(db, "medicines"), where("location", "==", "dinas"));
-    } else {
-      medQuery = query(collection(db, "medicines"), where("userId", "==", user.id));
-    }
+    // Mengambil semua data dari koleksi 'stock-opnames' dan mengurutkannya berdasarkan tanggal
+    const q = query(collection(db, "stock-opnames"), orderBy("opnameDate", "desc"));
     
-    const unsubscribe = onSnapshot(medQuery, (querySnapshot) => {
-      const medsData: Medicine[] = querySnapshot.docs.map(doc => {
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const opnamesData: StockOpname[] = querySnapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
           ...data,
-          expiryDate: (data.expiryDate as Timestamp).toDate(),
-        } as Medicine;
+          opnameDate: data.opnameDate.toDate(),
+          expireDate: data.expireDate ? data.expireDate.toDate() : undefined,
+        } as StockOpname;
       });
-      setMedicines(medsData);
+      setStockOpnames(opnamesData);
       setLoading(false);
     }, (error) => {
-        console.error("Failed to fetch medicines:", error);
+        console.error("Failed to fetch stock opnames:", error);
         setLoading(false);
         toast({
             title: "Gagal Memuat Data",
-            description: "Tidak dapat mengambil data stok. Coba lagi nanti.",
+            description: "Tidak dapat mengambil data stock opname. Coba lagi nanti.",
             variant: "destructive",
         })
     });
@@ -63,49 +60,47 @@ export default function StockOpnamePage() {
   }, [user, toast]);
 
   const handleAdd = () => {
-    setSelectedMedicine(null);
+    setSelectedOpname(null);
     setIsSheetOpen(true);
   }
 
-  const handleEdit = (medicine: Medicine) => {
-    setSelectedMedicine(medicine);
+  const handleEdit = (opname: StockOpname) => {
+    setSelectedOpname(opname);
     setIsSheetOpen(true);
   }
 
-  const openDeleteDialog = (medicineId: string) => {
-    setMedicineToDelete(medicineId);
+  const openDeleteDialog = (opname: StockOpname) => {
+    setOpnameToDelete(opname);
     setIsDeleteDialogOpen(true);
   };
 
   const handleDelete = async () => {
-    if (!medicineToDelete) return;
+    if (!opnameToDelete) return;
     
-    try {
-        await deleteDoc(doc(db, "medicines", medicineToDelete));
+    const result = await deleteStockOpnameAction(opnameToDelete.id);
+
+    if (result.success) {
         toast({
             title: "Data Dihapus",
-            description: "Data obat telah berhasil dihapus.",
+            description: `Data stock opname untuk ${opnameToDelete.medicineName} telah berhasil dihapus.`,
         });
-    } catch (error) {
+    } else {
         toast({
             title: "Gagal Menghapus",
-            description: "Terjadi kesalahan saat menghapus data.",
+            description: result.error || "Terjadi kesalahan saat menghapus data.",
             variant: "destructive",
         });
-    } finally {
-        setIsDeleteDialogOpen(false);
-        setMedicineToDelete(null);
     }
+    setIsDeleteDialogOpen(false);
+    setOpnameToDelete(null);
   };
 
-
-  const handlers: MedicineActionHandlers = {
+  const handlers: StockOpnameActionHandlers = {
     onEdit: handleEdit,
-    onDelete: (medicineId) => openDeleteDialog(medicineId),
+    onDelete: openDeleteDialog,
   };
   
-  const columns = useMemo(() => getColumns(handlers, user?.role), [user, handlers]);
-
+  const columns = useMemo(() => getColumns(handlers), [handlers]);
 
   if (loading) {
       return (
@@ -124,36 +119,13 @@ export default function StockOpnamePage() {
   return (
     <>
       <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
-        
-        {/* BAGIAN FORMULIR BARU */}
-        <div className="flex items-center justify-between space-y-2">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Pencatatan Stock Opname</h2>
-            <p className="text-muted-foreground">
-              Masukkan data stok obat historis di sini.
-            </p>
-          </div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <StockOpnameForm />
-        </div>
-
-        {/* BAGIAN DAFTAR OBAT ANDA YANG SUDAH ADA */}
-        <div className="flex items-center justify-between space-y-2 pt-8">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">Daftar Master Obat {user?.location || ''}</h2>
-              <p className="text-muted-foreground">
-                Berikut adalah daftar obat-obatan yang tersedia di lokasi Anda.
-              </p>
-            </div>
-        </div>
-        <DataTable data={medicines} columns={columns} onAdd={handleAdd} filterColumn="name"/>
+        <DataTable data={stockOpnames} columns={columns} onAdd={handleAdd} filterColumn="medicineName"/>
       </div>
 
-      <MedicineFormSheet 
+      <StockOpnameFormSheet 
         isOpen={isSheetOpen}
         setIsOpen={setIsSheetOpen}
-        medicine={selectedMedicine}
+        opnameData={selectedOpname}
       />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -161,7 +133,7 @@ export default function StockOpnamePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Anda yakin?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tindakan ini tidak dapat dibatalkan. Ini akan menghapus data obat secara permanen.
+              Tindakan ini akan menghapus data stock opname untuk <strong>{opnameToDelete?.medicineName}</strong> pada tanggal <strong>{opnameToDelete?.opnameDate ? format(opnameToDelete.opnameDate, "d LLL yyyy", { locale: id }) : ''}</strong> secara permanen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

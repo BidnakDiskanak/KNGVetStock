@@ -39,6 +39,29 @@ export type User = {
   location: string; // e.g., 'Dinas' or 'UPTD PKH Kuningan'
 };
 
+export interface StockOpname {
+    id: string;
+    opnameDate: Date;
+    medicineName: string;
+    jenisObat?: string;
+    satuan?: string;
+    expireDate?: Date;
+    asalBarang?: string;
+    keadaanBulanLaluBaik: number;
+    keadaanBulanLaluRusak: number;
+    keadaanBulanLaluJml: number;
+    pemasukanBaik: number;
+    pemasukanRusak: number;
+    pemasukanJml: number;
+    pengeluaranBaik: number;
+    pengeluaranRusak: number;
+    pengeluaranJml: number;
+    keadaanBulanLaporanBaik: number;
+    keadaanBulanLaporanRusak: number;
+    keadaanBulanLaporanJml: number;
+    keterangan?: string;
+}
+
 export type AppSettings = {
     dinasName?: string;
     address?: string;
