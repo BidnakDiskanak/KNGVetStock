@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { StockOpname } from '@/lib/types'; // Anda perlu menambahkan tipe data ini
+import type { StockOpname } from '@/lib/types';
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 
 import { useUser } from '@/contexts/UserProvider';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DataTable } from './components/data-table';
 import { getColumns, type StockOpnameActionHandlers } from './components/columns';
-import { StockOpnameFormSheet } from './components/stock-opname-form-sheet'; // Kita akan buat komponen ini
+import { StockOpnameFormSheet } from './components/stock-opname-form-sheet';
 import { deleteStockOpnameAction } from '@/actions/stock-opname-actions';
 
 export default function StockOpnamePage() {
@@ -30,7 +32,6 @@ export default function StockOpnamePage() {
         return;
     };
     
-    // Mengambil semua data dari koleksi 'stock-opnames' dan mengurutkannya berdasarkan tanggal
     const q = query(collection(db, "stock-opnames"), orderBy("opnameDate", "desc"));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {

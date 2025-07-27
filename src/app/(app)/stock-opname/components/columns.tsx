@@ -2,6 +2,9 @@
 
 import { ColumnDef } from "@tanstack/react-table"
 import { MoreHorizontal } from "lucide-react"
+import { format } from "date-fns"
+import { id } from "date-fns/locale"
+
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -11,126 +14,59 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-import { DataTableColumnHeader } from "./data-table-column-header"
-import type { Medicine, User } from "@/lib/types"
-import { differenceInDays, format } from "date-fns"
-import { id } from "date-fns/locale"
-import { cn } from "@/lib/utils"
-import { Timestamp } from "firebase/firestore"
+import type { StockOpname } from "@/lib/types"
 
-// This type is used to pass handlers from the main page to the columns
-export type MedicineActionHandlers = {
-  onEdit: (medicine: Medicine) => void;
-  onDelete: (medicineId: string) => void;
-};
+export interface StockOpnameActionHandlers {
+  onEdit: (opname: StockOpname) => void;
+  onDelete: (opname: StockOpname) => void;
+}
 
-
-export const getColumns = (handlers: MedicineActionHandlers, userRole?: User['role']): ColumnDef<Medicine>[] => [
+export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<StockOpname>[] => [
   {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
+    accessorKey: "medicineName",
+    header: "Nama Obat",
   },
   {
-    accessorKey: "name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Nama Obat" />
-    ),
+    accessorKey: "keadaanBulanLaporanJml",
+    header: "Stok Akhir",
   },
   {
-    accessorKey: "type",
-    header: "Jenis Obat",
-     filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
-    },
-  },
-  {
-    accessorKey: "unit",
-    header: "Satuan",
-     filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
-    },
-  },
-  {
-    accessorKey: "sisa_baik",
-    header: ({ column }) => (
-       <DataTableColumnHeader column={column} title="Sisa Stok" />
-    ),
+    accessorKey: "opnameDate",
+    header: "Tanggal Catat",
     cell: ({ row }) => {
-       const sisa_baik = (row.getValue("sisa_baik") || 0) as number;
-       const sisa_rusak = (row.original.sisa_rusak || 0) as number;
-       const total = sisa_baik + sisa_rusak;
-      return <div className="text-center font-bold">{total || 0}</div>
-    },
+        const date = row.getValue("opnameDate") as Date;
+        return <span>{format(date, "d LLL yyyy", { locale: id })}</span>
+    }
   },
   {
-    accessorKey: "expiryDate",
-    header: ({ column }) => (
-       <DataTableColumnHeader column={column} title="Tgl. Kadaluarsa" />
-    ),
-    cell: ({ row }) => {
-      const expiry = row.getValue("expiryDate") as Date | Timestamp;
-      const expiryDate = expiry instanceof Timestamp ? expiry.toDate() : expiry;
-      const daysUntilExpiry = differenceInDays(expiryDate, new Date());
-
-      let badgeVariant: "default" | "secondary" | "destructive" | "outline" = "secondary";
-      if (daysUntilExpiry < 0) {
-        badgeVariant = "destructive";
-      } else if (daysUntilExpiry <= 30) {
-        badgeVariant = "destructive";
-      } else if (daysUntilExpiry <= 90) {
-        badgeVariant = "outline";
-      }
-
-      return (
-        <Badge variant={badgeVariant} className={cn(daysUntilExpiry <= 30 && "animate-pulse")}>
-          {format(expiryDate, "dd MMM yyyy", { locale: id })}
-        </Badge>
-      );
-    },
+    accessorKey: "keterangan",
+    header: "Keterangan",
   },
   {
     id: "actions",
     cell: ({ row }) => {
-      const medicine = row.original
-      
+      const opname = row.original
+ 
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
+              <span className="sr-only">Buka menu</span>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => handlers.onEdit(medicine)}>Ubah Data</DropdownMenuItem>
-             <DropdownMenuSeparator />
-             <DropdownMenuItem 
+            <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handlers.onEdit(opname)}>
+              Ubah Data
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                onClick={() => handlers.onDelete(medicine.id)}
-              >
-                Hapus Data
-              </DropdownMenuItem>
+                onClick={() => handlers.onDelete(opname)}
+            >
+              Hapus Data
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )
