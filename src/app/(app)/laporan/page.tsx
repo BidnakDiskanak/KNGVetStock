@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Printer } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
+import { useUser } from "@/contexts/UserProvider"; // <-- Import useUser
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -12,7 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { DataTable } from '@/app/(app)/stock-opname/components/data-table'; // Kita gunakan ulang DataTable
+import { DataTable } from '@/app/(app)/stock-opname/components/data-table';
 import { getReportDataAction } from "@/actions/report-actions";
 import { useToast } from "@/hooks/use-toast";
 import { ColumnDef } from "@tanstack/react-table";
@@ -23,10 +26,11 @@ interface ReportData {
   id: string;
   medicineName: string;
   quantity: number;
-  opnameDate: string; // Kita akan gunakan string untuk kemudahan tampilan
+  opnameDate: string;
 }
 
 export default function ReportPage() {
+  const { user } = useUser(); // <-- Dapatkan data pengguna yang login
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [reportData, setReportData] = useState<ReportData[]>([]);
@@ -44,7 +48,7 @@ export default function ReportPage() {
     }
 
     setLoading(true);
-    setReportData([]); // Kosongkan data lama
+    setReportData([]);
 
     const result = await getReportDataAction({ startDate, endDate });
 
@@ -65,6 +69,100 @@ export default function ReportPage() {
     }
 
     setLoading(false);
+  };
+
+  // Fungsi untuk mencetak laporan ke PDF dengan format resmi
+  const handlePrintReport = () => {
+    if (reportData.length === 0) {
+        toast({
+            title: "Tidak Ada Data",
+            description: "Tidak ada data untuk dicetak. Silakan tampilkan laporan terlebih dahulu.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 14;
+
+    // --- 1. KOP SURAT (HEADER) ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    if (user?.role === 'admin') {
+        doc.text("LAPORAN STOCK OPNAME BARANG OBAT-OBATAN DAN VAKSIN", pageWidth / 2, margin, { align: 'center' });
+        doc.text("BIDANG PETERNAKAN DINAS PERIKANAN DAN PETERNAKAN", pageWidth / 2, margin + 5, { align: 'center' });
+        doc.text("KABUPATEN KUNINGAN", pageWidth / 2, margin + 10, { align: 'center' });
+    } else {
+        doc.text(`LAPORAN STOCK OPNAME OBAT-OBATAN DAN VAKSIN`, pageWidth / 2, margin, { align: 'center' });
+        doc.text(user?.location?.toUpperCase() || 'LOKASI UPTD', pageWidth / 2, margin + 5, { align: 'center' });
+    }
+
+    // --- 2. PERIODE LAPORAN ---
+    const period = `PERIODE: ${startDate ? format(startDate, "MMMM yyyy", { locale: id }).toUpperCase() : ''}`;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text(period, margin, margin + 20);
+
+    // --- 3. TABEL DATA ---
+    const tableColumns = ["No", "Nama Obat", "Jumlah", "Tanggal Opname"];
+    const tableRows = reportData.map((item, index) => [
+        index + 1,
+        item.medicineName,
+        item.quantity,
+        item.opnameDate,
+    ]);
+
+    autoTable(doc, {
+        startY: margin + 25,
+        head: [tableColumns],
+        body: tableRows,
+        theme: 'grid',
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        styles: { cellPadding: 2, fontSize: 10 },
+    });
+
+    // --- 4. KOLOM TANDA TANGAN ---
+    const finalY = (doc as any).lastAutoTable.finalY || margin + 50;
+    let signatureY = finalY + 15;
+
+    // Jika tanda tangan tidak muat, pindah ke halaman baru
+    if (signatureY > pageHeight - 50) {
+        doc.addPage();
+        signatureY = margin;
+    }
+
+    doc.setFontSize(11);
+    const today = format(new Date(), "d MMMM yyyy", { locale: id });
+
+    if (user?.role === 'admin') {
+        // Tanda tangan untuk Admin Dinas
+        doc.text("Mengetahui,", margin, signatureY);
+        doc.text("Kepala Dinas Perikanan dan Peternakan", margin, signatureY + 5);
+        doc.text("Kabupaten Kuningan", margin, signatureY + 10);
+        doc.text("(.........................................)", margin, signatureY + 35);
+        
+        const centerPos = pageWidth / 2;
+        doc.text("Kepala Bidang Peternakan", centerPos, signatureY + 5, { align: 'center' });
+        doc.text("(.........................................)", centerPos, signatureY + 35, { align: 'center' });
+
+        doc.text(`Kuningan, ${today}`, pageWidth - margin, signatureY, { align: 'right' });
+        doc.text("Petugas,", pageWidth - margin, signatureY + 5, { align: 'right' });
+        doc.text(user?.name || '(.........................................)', pageWidth - margin, signatureY + 35, { align: 'right' });
+    } else {
+        // Tanda tangan untuk User UPTD
+        doc.text("Mengetahui,", margin, signatureY);
+        doc.text("Kepala UPTD", margin, signatureY + 5);
+        doc.text("(.........................................)", margin, signatureY + 35);
+
+        doc.text(`Kuningan, ${today}`, pageWidth - margin, signatureY, { align: 'right' });
+        doc.text("Yang Melaporkan,", pageWidth - margin, signatureY + 5, { align: 'right' });
+        doc.text(user?.name || '(.........................................)', pageWidth - margin, signatureY + 35, { align: 'right' });
+    }
+
+    // --- 5. SIMPAN PDF ---
+    doc.save(`laporan-stock-opname-${format(new Date(), "yyyy-MM-dd")}.pdf`);
   };
   
   // Definisikan kolom untuk tabel laporan
@@ -130,9 +228,16 @@ export default function ReportPage() {
                 </PopoverContent>
             </Popover>
         </div>
-        <Button onClick={handleGenerateReport} disabled={loading} className="mt-auto">
-          {loading ? "Menghasilkan..." : "Tampilkan Laporan"}
-        </Button>
+        <div className="flex items-end gap-2">
+            <Button onClick={handleGenerateReport} disabled={loading}>
+                {loading ? "Menghasilkan..." : "Tampilkan Laporan"}
+            </Button>
+            {/* Tombol Cetak Laporan Baru */}
+            <Button onClick={handlePrintReport} disabled={loading || reportData.length === 0} variant="outline">
+                <Printer className="mr-2 h-4 w-4" />
+                Cetak Laporan
+            </Button>
+        </div>
       </div>
 
       {/* Bagian Tabel Hasil Laporan */}
@@ -141,4 +246,72 @@ export default function ReportPage() {
       </div>
     </div>
   );
+}
+
+
+/*
+================================================================================
+File 2: Server Action untuk Laporan
+Lokasi: src/actions/report-actions.ts
+Tujuan: File ini berisi logika untuk mengambil data laporan dari Firestore
+         berdasarkan rentang tanggal. (Tidak ada perubahan di file ini)
+================================================================================
+*/
+'use server';
+
+import { getFirebaseAdminApp } from "@/lib/firebase-admin-app";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
+
+interface ReportData {
+  id: string;
+  medicineName: string;
+  quantity: number;
+  opnameDate: string;
+}
+
+interface ActionResponse {
+    success: boolean;
+    data?: ReportData[];
+    error?: string;
+}
+
+interface DateRange {
+    startDate: Date;
+    endDate: Date;
+}
+
+export async function getReportDataAction({ startDate, endDate }: DateRange): Promise<ActionResponse> {
+  try {
+    const app = getFirebaseAdminApp();
+    const db = getFirestore(app);
+
+    // Pastikan tanggal akhir mencakup keseluruhan hari
+    const endOfDay = new Date(endDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const stockOpnamesRef = db.collection("stock-opnames");
+    const q = stockOpnamesRef
+                .where('opnameDate', '>=', Timestamp.fromDate(startDate))
+                .where('opnameDate', '<=', Timestamp.fromDate(endOfDay));
+
+    const querySnapshot = await q.get();
+
+    const data: ReportData[] = querySnapshot.docs.map(doc => {
+        const docData = doc.data();
+        return {
+            id: doc.id,
+            medicineName: docData.medicineName,
+            quantity: docData.quantity,
+            // Format timestamp menjadi string tanggal yang mudah dibaca
+            opnameDate: format(docData.opnameDate.toDate(), "PPP", { locale: id }),
+        };
+    });
+
+    return { success: true, data };
+  } catch (error: any) {
+    console.error("Error getting report data:", error);
+    return { success: false, error: error.message || "Gagal mengambil data laporan." };
+  }
 }
