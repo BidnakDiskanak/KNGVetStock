@@ -59,9 +59,11 @@ export async function getReportDataAction({ startDate, endDate }: DateRange): Pr
         const docData = doc.data();
         return {
             id: doc.id,
+            // Format tanggal menjadi string yang mudah dibaca
             opnameDate: format(docData.opnameDate.toDate(), "d LLL yyyy", { locale: id }),
             expireDate: docData.expireDate ? format(docData.expireDate.toDate(), "d LLL yyyy", { locale: id }) : '',
             
+            // Ambil semua data lain dari dokumen
             medicineName: docData.medicineName || '',
             jenisObat: docData.jenisObat || '',
             satuan: docData.satuan || '',

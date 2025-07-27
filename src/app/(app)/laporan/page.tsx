@@ -46,10 +46,12 @@ interface ReportData {
   keterangan?: string;
 }
 
-// Definisikan tipe data untuk pejabat
+// Definisikan tipe data untuk pejabat, termasuk NIP
 interface Officials {
     kepalaDinas?: string;
     kepalaBidang?: string;
+    nipKepalaDinas?: string;
+    nipKepalaBidang?: string;
 }
 
 export default function ReportPage() {
@@ -191,36 +193,42 @@ export default function ReportPage() {
     const finalY = (doc as any).lastAutoTable.finalY || pageHeight / 2;
     let signatureY = finalY + 10;
 
-    if (signatureY > pageHeight - 40) {
+    if (signatureY > pageHeight - 50) {
         doc.addPage();
         signatureY = margin;
     }
 
     doc.setFontSize(10);
     const today = format(new Date(), "d MMMM yyyy", { locale: id });
-    const placeholder = "(.........................................)";
+    const placeholderName = "(.........................................)";
+    const placeholderNip = "NIP. .....................................";
 
     if (user?.role === 'admin') {
         doc.text("Mengetahui,", margin, signatureY);
         doc.text("Kepala Dinas Perikanan dan Peternakan", margin, signatureY + 4);
         doc.text("Kabupaten Kuningan", margin, signatureY + 8);
-        doc.text(officials.kepalaDinas || placeholder, margin, signatureY + 28);
+        doc.text(officials.kepalaDinas || placeholderName, margin, signatureY + 28);
+        doc.text(officials.nipKepalaDinas ? `NIP. ${officials.nipKepalaDinas}` : placeholderNip, margin, signatureY + 32);
         
         const centerPos = pageWidth / 2;
         doc.text("Kepala Bidang Peternakan", centerPos, signatureY + 4, { align: 'center' });
-        doc.text(officials.kepalaBidang || placeholder, centerPos, signatureY + 28, { align: 'center' });
+        doc.text(officials.kepalaBidang || placeholderName, centerPos, signatureY + 28, { align: 'center' });
+        doc.text(officials.nipKepalaBidang ? `NIP. ${officials.nipKepalaBidang}` : placeholderNip, centerPos, signatureY + 32, { align: 'center' });
 
         doc.text(`Kuningan, ${today}`, pageWidth - margin, signatureY, { align: 'right' });
         doc.text("Petugas,", pageWidth - margin, signatureY + 4, { align: 'right' });
-        doc.text(user?.name || placeholder, pageWidth - margin, signatureY + 28, { align: 'right' });
+        doc.text(user?.name || placeholderName, pageWidth - margin, signatureY + 28, { align: 'right' });
+        doc.text(user?.nip ? `NIP. ${user.nip}` : placeholderNip, pageWidth - margin, signatureY + 32, { align: 'right' });
     } else {
         doc.text("Mengetahui,", margin, signatureY);
         doc.text("Kepala UPTD", margin, signatureY + 4);
-        doc.text(placeholder, margin, signatureY + 28);
+        doc.text(placeholderName, margin, signatureY + 28);
+        doc.text(placeholderNip, margin, signatureY + 32);
 
         doc.text(`Kuningan, ${today}`, pageWidth - margin, signatureY, { align: 'right' });
         doc.text("Yang Melaporkan,", pageWidth - margin, signatureY + 4, { align: 'right' });
-        doc.text(user?.name || placeholder, pageWidth - margin, signatureY + 28, { align: 'right' });
+        doc.text(user?.name || placeholderName, pageWidth - margin, signatureY + 28, { align: 'right' });
+        doc.text(user?.nip ? `NIP. ${user.nip}` : placeholderNip, pageWidth - margin, signatureY + 32, { align: 'right' });
     }
 
     doc.save(`laporan-stock-opname-${format(new Date(), "yyyy-MM-dd")}.pdf`);
