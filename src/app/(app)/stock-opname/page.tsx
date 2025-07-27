@@ -1,49 +1,5 @@
 "use client"
 
-// ... (semua import Anda yang sudah ada)
-import { StockOpnameForm } from './components/stock-opname-form'; // <-- TAMBAHKAN IMPORT INI
-
-export default function StockOpnamePage() {
-  // ... (semua state dan useEffect Anda yang sudah ada)
-
-  if (loading) {
-    // ... (kode loading skeleton Anda)
-  }
-
-  return (
-    <>
-      <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
-        <div className="flex items-center justify-between space-y-2">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Pencatatan Stock Opname</h2>
-            <p className="text-muted-foreground">
-              Masukkan data stok obat historis di sini.
-            </p>
-          </div>
-        </div>
-
-        {/* 1. LETAKKAN FORMULIR BARU DI SINI */}
-        <div className="rounded-lg border p-4">
-          <StockOpnameForm />
-        </div>
-
-        {/* 2. BAGIAN DAFTAR OBAT ANDA YANG SUDAH ADA */}
-        <div className="flex items-center justify-between space-y-2 pt-8">
-           <div>
-             <h2 className="text-2xl font-bold tracking-tight">Daftar Master Obat {user?.location || ''}</h2>
-             <p className="text-muted-foreground">
-               Berikut adalah daftar obat-obatan yang tersedia di lokasi Anda.
-             </p>
-           </div>
-        </div>
-        <DataTable data={medicines} columns={columns} onAdd={handleAdd} filterColumn="name"/>
-      </div>
-
-      {/* ... (sisa kode Anda untuk MedicineFormSheet dan AlertDialog) */}
-    </>
-  );
-}
-
 import { useEffect, useMemo, useState } from 'react';
 import { getColumns, type MedicineActionHandlers } from './components/columns';
 import { DataTable } from './components/data-table';
@@ -55,6 +11,8 @@ import { MedicineFormSheet } from './components/medicine-form-sheet';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useUser } from '@/contexts/UserProvider';
+// <-- TAMBAHKAN IMPORT INI
+import { StockOpnameForm } from './components/stock-opname-form'; 
 
 export default function StockOpnamePage() {
   const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -73,7 +31,6 @@ export default function StockOpnamePage() {
     };
     
     let medQuery;
-    // Admins see 'dinas' stock, users see their own stock based on their ID.
     if (user.role === 'admin') {
       medQuery = query(collection(db, "medicines"), where("location", "==", "dinas"));
     } else {
@@ -151,29 +108,44 @@ export default function StockOpnamePage() {
 
 
   if (loading) {
-     return (
-       <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
-         <div className="flex items-center justify-between space-y-2">
+      return (
+        <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
+          <div className="flex items-center justify-between space-y-2">
             <div>
               <Skeleton className="h-8 w-48 mb-2" />
               <Skeleton className="h-4 w-72" />
             </div>
           </div>
-         <Skeleton className="h-96 w-full" />
-       </div>
-     )
+          <Skeleton className="h-96 w-full" />
+        </div>
+      )
   }
 
   return (
     <>
       <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
+        
+        {/* BAGIAN FORMULIR BARU */}
         <div className="flex items-center justify-between space-y-2">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Stock Opname {user?.location || ''}</h2>
+            <h2 className="text-2xl font-bold tracking-tight">Pencatatan Stock Opname</h2>
             <p className="text-muted-foreground">
-              Berikut adalah daftar obat-obatan yang tersedia di lokasi Anda.
+              Masukkan data stok obat historis di sini.
             </p>
           </div>
+        </div>
+        <div className="rounded-lg border p-4">
+          <StockOpnameForm />
+        </div>
+
+        {/* BAGIAN DAFTAR OBAT ANDA YANG SUDAH ADA */}
+        <div className="flex items-center justify-between space-y-2 pt-8">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Daftar Master Obat {user?.location || ''}</h2>
+              <p className="text-muted-foreground">
+                Berikut adalah daftar obat-obatan yang tersedia di lokasi Anda.
+              </p>
+            </div>
         </div>
         <DataTable data={medicines} columns={columns} onAdd={handleAdd} filterColumn="name"/>
       </div>
