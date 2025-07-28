@@ -23,39 +23,40 @@ export interface StockOpnameActionHandlers {
 
 export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<StockOpname>[] => [
   {
-    header: "Nama Obat",
+    header: () => <div className="text-left">Nama Obat</div>,
     accessorKey: "medicineName",
+    cell: ({ row }) => <div className="text-left font-medium">{row.getValue("medicineName")}</div>,
   },
   {
-      header: "Keadaan Bulan Lalu",
+      header: () => <div className="text-center">Keadaan Bulan Lalu</div>,
       columns: [
-          { header: "Baik", accessorKey: "keadaanBulanLaluBaik" },
-          { header: "Rusak", accessorKey: "keadaanBulanLaluRusak" },
-          { header: "Jml", accessorKey: "keadaanBulanLaluJml" },
+          { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaluBaik", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaluBaik")}</div> },
+          { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaluRusak", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaluRusak")}</div> },
+          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaluJml", cell: ({ row }) => <div className="text-center font-bold">{row.getValue("keadaanBulanLaluJml")}</div> },
       ],
   },
   {
-      header: "Pemasukan",
+      header: () => <div className="text-center">Pemasukan</div>,
       columns: [
-          { header: "Baik", accessorKey: "pemasukanBaik" },
-          { header: "Rusak", accessorKey: "pemasukanRusak" },
-          { header: "Jml", accessorKey: "pemasukanJml" },
+          { header: () => <div className="text-center">Baik</div>, accessorKey: "pemasukanBaik", cell: ({ row }) => <div className="text-center">{row.getValue("pemasukanBaik")}</div> },
+          { header: () => <div className="text-center">Rusak</div>, accessorKey: "pemasukanRusak", cell: ({ row }) => <div className="text-center">{row.getValue("pemasukanRusak")}</div> },
+          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pemasukanJml", cell: ({ row }) => <div className="text-center font-bold">{row.getValue("pemasukanJml")}</div> },
       ],
   },
   {
-      header: "Pengeluaran",
+      header: () => <div className="text-center">Pengeluaran</div>,
       columns: [
-          { header: "Baik", accessorKey: "pengeluaranBaik" },
-          { header: "Rusak", accessorKey: "pengeluaranRusak" },
-          { header: "Jml", accessorKey: "pengeluaranJml" },
+          { header: () => <div className="text-center">Baik</div>, accessorKey: "pengeluaranBaik", cell: ({ row }) => <div className="text-center">{row.getValue("pengeluaranBaik")}</div> },
+          { header: () => <div className="text-center">Rusak</div>, accessorKey: "pengeluaranRusak", cell: ({ row }) => <div className="text-center">{row.getValue("pengeluaranRusak")}</div> },
+          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pengeluaranJml", cell: ({ row }) => <div className="text-center font-bold">{row.getValue("pengeluaranJml")}</div> },
       ],
   },
   {
-      header: "Keadaan Bulan Laporan",
+      header: () => <div className="text-center">Keadaan Bulan Laporan</div>,
       columns: [
-          { header: "Baik", accessorKey: "keadaanBulanLaporanBaik" },
-          { header: "Rusak", accessorKey: "keadaanBulanLaporanRusak" },
-          { header: "Jml", accessorKey: "keadaanBulanLaporanJml" },
+          { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaporanBaik", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaporanBaik")}</div> },
+          { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaporanRusak", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaporanRusak")}</div> },
+          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaporanJml", cell: ({ row }) => <div className="text-center font-bold">{row.getValue("keadaanBulanLaporanJml")}</div> },
       ],
   },
   {
@@ -63,14 +64,14 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
     accessorKey: "opnameDate",
     cell: ({ row }) => {
         const date = row.getValue("opnameDate") as Date;
-        return <span>{format(date, "d LLL yyyy", { locale: id })}</span>
+        return <div className="text-center">{format(date, "d LLL yyyy", { locale: id })}</div>
     }
   },
   {
     id: "actions",
     cell: ({ row }) => {
       const opname = row.original
- 
+
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
