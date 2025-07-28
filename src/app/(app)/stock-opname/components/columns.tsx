@@ -23,11 +23,13 @@ export interface StockOpnameActionHandlers {
 
 export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<StockOpname>[] => [
   {
+    id: 'medicineNameGroup', // <-- ID UNTUK GRUP
     header: () => <div className="text-left">Nama Obat</div>,
     accessorKey: "medicineName",
     cell: ({ row }) => <div className="text-left font-medium">{row.getValue("medicineName")}</div>,
   },
   {
+      id: 'keadaanBulanLaluGroup', // <-- ID UNTUK GRUP
       header: () => <div className="text-center">Keadaan Bulan Lalu</div>,
       columns: [
           { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaluBaik", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaluBaik")}</div> },
@@ -36,6 +38,7 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
       ],
   },
   {
+      id: 'pemasukanGroup', // <-- ID UNTUK GRUP
       header: () => <div className="text-center">Pemasukan</div>,
       columns: [
           { header: () => <div className="text-center">Baik</div>, accessorKey: "pemasukanBaik", cell: ({ row }) => <div className="text-center">{row.getValue("pemasukanBaik")}</div> },
@@ -44,6 +47,7 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
       ],
   },
   {
+      id: 'pengeluaranGroup', // <-- ID UNTUK GRUP
       header: () => <div className="text-center">Pengeluaran</div>,
       columns: [
           { header: () => <div className="text-center">Baik</div>, accessorKey: "pengeluaranBaik", cell: ({ row }) => <div className="text-center">{row.getValue("pengeluaranBaik")}</div> },
@@ -52,6 +56,7 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
       ],
   },
   {
+      id: 'keadaanBulanLaporanGroup', // <-- ID UNTUK GRUP
       header: () => <div className="text-center">Keadaan Bulan Laporan</div>,
       columns: [
           { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaporanBaik", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaporanBaik")}</div> },
@@ -60,6 +65,7 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
       ],
   },
   {
+    id: 'opnameDateGroup', // <-- ID UNTUK GRUP
     header: "Tanggal Catat",
     accessorKey: "opnameDate",
     cell: ({ row }) => {

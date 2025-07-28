@@ -234,15 +234,15 @@ export default function ReportPage() {
     doc.save(`laporan-stock-opname-${format(new Date(), "yyyy-MM-dd")}.pdf`);
   };
 
-  // --- PERUBAHAN DIMULAI DI SINI ---
-  // Definisikan kolom untuk tabel laporan di halaman web (dibuat lebih detail dan rapi)
   const columns: ColumnDef<ReportData>[] = [
     {
+        id: 'medicineNameGroup', // <-- ID UNTUK GRUP
         header: () => <div className="text-left">Nama Obat</div>,
         accessorKey: "medicineName",
         cell: ({ row }) => <div className="text-left font-medium">{row.getValue("medicineName")}</div>,
     },
     {
+        id: 'keadaanBulanLaluGroup', // <-- ID UNTUK GRUP
         header: () => <div className="text-center">Keadaan Bulan Lalu</div>,
         columns: [
             { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaluBaik", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaluBaik")}</div> },
@@ -251,6 +251,7 @@ export default function ReportPage() {
         ],
     },
     {
+        id: 'pemasukanGroup', // <-- ID UNTUK GRUP
         header: () => <div className="text-center">Pemasukan</div>,
         columns: [
             { header: () => <div className="text-center">Baik</div>, accessorKey: "pemasukanBaik", cell: ({ row }) => <div className="text-center">{row.getValue("pemasukanBaik")}</div> },
@@ -259,6 +260,7 @@ export default function ReportPage() {
         ],
     },
     {
+        id: 'pengeluaranGroup', // <-- ID UNTUK GRUP
         header: () => <div className="text-center">Pengeluaran</div>,
         columns: [
             { header: () => <div className="text-center">Baik</div>, accessorKey: "pengeluaranBaik", cell: ({ row }) => <div className="text-center">{row.getValue("pengeluaranBaik")}</div> },
@@ -267,6 +269,7 @@ export default function ReportPage() {
         ],
     },
     {
+        id: 'keadaanBulanLaporanGroup', // <-- ID UNTUK GRUP
         header: () => <div className="text-center">Keadaan Bulan Laporan</div>,
         columns: [
             { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaporanBaik", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaporanBaik")}</div> },
@@ -275,12 +278,12 @@ export default function ReportPage() {
         ],
     },
     {
+        id: 'expireDateGroup', // <-- ID UNTUK GRUP
         header: "Expire Date",
         accessorKey: "expireDate",
         cell: ({ row }) => <div className="text-center">{row.getValue("expireDate")}</div>,
     },
   ];
-  // --- PERUBAHAN SELESAI DI SINI ---
 
   return (
     <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
@@ -293,7 +296,6 @@ export default function ReportPage() {
         </div>
       </div>
 
-      {/* Bagian Pemilih Tanggal */}
       <div className="flex flex-col md:flex-row items-center gap-4 rounded-lg border p-4">
         <div className="flex flex-col space-y-2">
             <span className="text-sm font-medium">Tanggal Mulai</span>
@@ -340,7 +342,6 @@ export default function ReportPage() {
         </div>
       </div>
 
-      {/* Bagian Tabel Hasil Laporan */}
       <div className="pt-8">
         <DataTable data={reportData} columns={columns} filterColumn="medicineName" />
       </div>
