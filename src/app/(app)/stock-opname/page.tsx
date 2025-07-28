@@ -39,7 +39,6 @@ export default function StockOpnamePage() {
       querySnapshot.forEach(doc => {
           const data = doc.data();
           try {
-              // --- PERBAIKAN DIMULAI DI SINI ---
               // Coba konversi tanggal. Jika gagal, lewati dokumen ini.
               const opnameDate = data.opnameDate?.toDate();
               const expireDate = data.expireDate?.toDate();
@@ -56,7 +55,6 @@ export default function StockOpnamePage() {
                   opnameDate: opnameDate,
                   expireDate: expireDate && !isNaN(expireDate.getTime()) ? expireDate : undefined,
               } as StockOpname);
-              // --- PERBAIKAN SELESAI DI SINI ---
           } catch (e) {
               console.error(`Gagal memproses dokumen stock opname dengan ID ${doc.id}:`, e);
           }
