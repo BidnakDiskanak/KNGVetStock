@@ -35,15 +35,33 @@ export default function StockOpnamePage() {
     const q = query(collection(db, "stock-opnames"), orderBy("opnameDate", "desc"));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const opnamesData: StockOpname[] = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          opnameDate: data.opnameDate.toDate(),
-          expireDate: data.expireDate ? data.expireDate.toDate() : undefined,
-        } as StockOpname;
+      const opnamesData: StockOpname[] = [];
+      querySnapshot.forEach(doc => {
+          const data = doc.data();
+          try {
+              // --- PERBAIKAN DIMULAI DI SINI ---
+              // Coba konversi tanggal. Jika gagal, lewati dokumen ini.
+              const opnameDate = data.opnameDate?.toDate();
+              const expireDate = data.expireDate?.toDate();
+
+              // Validasi bahwa opnameDate ada dan merupakan tanggal yang valid
+              if (!opnameDate || isNaN(opnameDate.getTime())) {
+                  console.warn(`Dokumen dengan ID ${doc.id} memiliki opnameDate yang tidak valid dan dilewati.`);
+                  return; // Lewati dokumen ini
+              }
+
+              opnamesData.push({
+                  id: doc.id,
+                  ...data,
+                  opnameDate: opnameDate,
+                  expireDate: expireDate && !isNaN(expireDate.getTime()) ? expireDate : undefined,
+              } as StockOpname);
+              // --- PERBAIKAN SELESAI DI SINI ---
+          } catch (e) {
+              console.error(`Gagal memproses dokumen stock opname dengan ID ${doc.id}:`, e);
+          }
       });
+
       setStockOpnames(opnamesData);
       setLoading(false);
     }, (error) => {
