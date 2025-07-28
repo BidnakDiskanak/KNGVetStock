@@ -9,7 +9,7 @@ import { id } from "date-fns/locale";
 import { Calendar as CalendarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -27,8 +27,8 @@ const formSchema = z.object({
   satuan: z.string().optional(),
   expireDate: z.date().optional(),
   asalBarang: z.string().optional(),
-  keadaanBulanLaluBaik: z.coerce.number().min(0).default(0),
-  keadaanBulanLaluRusak: z.coerce.number().min(0).default(0),
+  keadaanBulanLaluBaik: z.coerce.number().min(0).default(0).optional(),
+  keadaanBulanLaluRusak: z.coerce.number().min(0).default(0).optional(),
   pemasukanBaik: z.coerce.number().min(0).default(0),
   pemasukanRusak: z.coerce.number().min(0).default(0),
   pengeluaranBaik: z.coerce.number().min(0).default(0),
@@ -50,20 +50,7 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
 
   const form = useForm<StockOpnameFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      opnameDate: new Date(),
-      medicineName: "",
-      jenisObat: "",
-      satuan: "",
-      asalBarang: "",
-      keadaanBulanLaluBaik: 0,
-      keadaanBulanLaluRusak: 0,
-      pemasukanBaik: 0,
-      pemasukanRusak: 0,
-      pengeluaranBaik: 0,
-      pengeluaranRusak: 0,
-      keterangan: "",
-    },
+    defaultValues: {},
   });
 
   useEffect(() => {
@@ -112,7 +99,7 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent className="sm:max-w-2xl">
+        <SheetContent className="sm:max-w-2xl overflow-y-auto">
             <SheetHeader>
                 <SheetTitle>{isEditMode ? 'Ubah Data Stock Opname' : 'Tambah Data Stock Opname'}</SheetTitle>
                 <SheetDescription>
@@ -134,6 +121,9 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
                         <Separator />
                         <div>
                             <h3 className="text-lg font-medium">Keadaan Bulan Lalu</h3>
+                            <FormDescription>
+                                Hanya diisi untuk entri pertama kali. Untuk entri selanjutnya, ini akan diisi otomatis.
+                            </FormDescription>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                                 <FormField control={form.control} name="keadaanBulanLaluBaik" render={({ field }) => (<FormItem><FormLabel>Baik</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <FormField control={form.control} name="keadaanBulanLaluRusak" render={({ field }) => (<FormItem><FormLabel>Rusak</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
@@ -161,7 +151,9 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
                             <FormField control={form.control} name="asalBarang" render={({ field }) => (<FormItem><FormLabel>Asal Barang</FormLabel><FormControl><Input placeholder="Pusat, Provinsi, dll" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                         </div>
                         <FormField control={form.control} name="keterangan" render={({ field }) => (<FormItem><FormLabel>Keterangan</FormLabel><FormControl><Input placeholder="Catatan tambahan" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                        <Button type="submit">Simpan Data</Button>
+                        <Button type="submit" disabled={form.formState.isSubmitting}>
+                            {form.formState.isSubmitting ? 'Menyimpan...' : 'Simpan Data'}
+                        </Button>
                     </form>
                 </Form>
             </div>

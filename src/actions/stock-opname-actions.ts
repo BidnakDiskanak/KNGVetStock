@@ -16,8 +16,9 @@ const formSchema = z.object({
   satuan: z.string().optional(),
   expireDate: z.date().optional(),
   asalBarang: z.string().optional(),
-  keadaanBulanLaluBaik: z.coerce.number().min(0).default(0),
-  keadaanBulanLaluRusak: z.coerce.number().min(0).default(0),
+  // Keadaan bulan lalu sekarang opsional, karena akan diisi otomatis
+  keadaanBulanLaluBaik: z.coerce.number().min(0).default(0).optional(),
+  keadaanBulanLaluRusak: z.coerce.number().min(0).default(0).optional(),
   pemasukanBaik: z.coerce.number().min(0).default(0),
   pemasukanRusak: z.coerce.number().min(0).default(0),
   pengeluaranBaik: z.coerce.number().min(0).default(0),
@@ -27,24 +28,47 @@ const formSchema = z.object({
 
 type StockOpnameData = z.infer<typeof formSchema>;
 
-// Fungsi untuk membuat data baru (CREATE)
-export async function createStockOpnameAction(formData: StockOpnameData): Promise<ActionResponse> {
+async function handleStockOpname(formData: StockOpnameData, existingId?: string): Promise<ActionResponse> {
   try {
     const validatedData = formSchema.parse(formData);
     const app = getFirebaseAdminApp();
     const db = getFirestore(app);
+    const stockOpnamesRef = db.collection("stock-opnames");
 
-    const keadaanBulanLaluJml = validatedData.keadaanBulanLaluBaik + validatedData.keadaanBulanLaluRusak;
+    let keadaanBulanLaluBaik = validatedData.keadaanBulanLaluBaik || 0;
+    let keadaanBulanLaluRusak = validatedData.keadaanBulanLaluRusak || 0;
+
+    // --- LOGIKA KALKULASI OTOMATIS ---
+    // Cari entri terakhir untuk obat dengan nama yang sama
+    const lastEntryQuery = stockOpnamesRef
+        .where('medicineName', '==', validatedData.medicineName)
+        .orderBy('opnameDate', 'desc')
+        .limit(1);
+        
+    const lastEntrySnapshot = await lastEntryQuery.get();
+
+    if (!lastEntrySnapshot.empty) {
+        const lastEntryData = lastEntrySnapshot.docs[0].data();
+        // Jika ditemukan, gunakan stok akhir dari entri terakhir sebagai stok awal entri ini
+        keadaanBulanLaluBaik = lastEntryData.keadaanBulanLaporanBaik;
+        keadaanBulanLaluRusak = lastEntryData.keadaanBulanLaporanRusak;
+    }
+    // Jika tidak ditemukan (ini entri pertama), gunakan nilai dari form.
+
+    // --- Lakukan Kalkulasi Ulang ---
+    const keadaanBulanLaluJml = keadaanBulanLaluBaik + keadaanBulanLaluRusak;
     const pemasukanJml = validatedData.pemasukanBaik + validatedData.pemasukanRusak;
     const pengeluaranJml = validatedData.pengeluaranBaik + validatedData.pengeluaranRusak;
-    const keadaanBulanLaporanBaik = validatedData.keadaanBulanLaluBaik + validatedData.pemasukanBaik - validatedData.pengeluaranBaik;
-    const keadaanBulanLaporanRusak = validatedData.keadaanBulanLaluRusak + validatedData.pemasukanRusak - validatedData.pengeluaranRusak;
+    const keadaanBulanLaporanBaik = keadaanBulanLaluBaik + validatedData.pemasukanBaik - validatedData.pengeluaranBaik;
+    const keadaanBulanLaporanRusak = keadaanBulanLaluRusak + validatedData.pemasukanRusak - validatedData.pengeluaranRusak;
     const keadaanBulanLaporanJml = keadaanBulanLaporanBaik + keadaanBulanLaporanRusak;
 
     const dataToSave = {
       ...validatedData,
       opnameDate: Timestamp.fromDate(validatedData.opnameDate),
       expireDate: validatedData.expireDate ? Timestamp.fromDate(validatedData.expireDate) : null,
+      keadaanBulanLaluBaik,
+      keadaanBulanLaluRusak,
       keadaanBulanLaluJml,
       pemasukanJml,
       pengeluaranJml,
@@ -53,50 +77,30 @@ export async function createStockOpnameAction(formData: StockOpnameData): Promis
       keadaanBulanLaporanJml,
       createdAt: Timestamp.now(),
     };
+    
+    if (existingId) {
+        // Mode UPDATE
+        await stockOpnamesRef.doc(existingId).update(dataToSave);
+    } else {
+        // Mode CREATE
+        await stockOpnamesRef.add(dataToSave);
+    }
 
-    await db.collection("stock-opnames").add(dataToSave);
     return { success: true };
   } catch (error: any) {
-    console.error("Error creating stock opname:", error);
-    return { success: false, error: error.message || "Gagal menyimpan data." };
+    console.error("Error handling stock opname:", error);
+    return { success: false, error: error.message || "Gagal memproses data." };
   }
 }
 
-// Fungsi untuk mengubah data (UPDATE)
+export async function createStockOpnameAction(formData: StockOpnameData): Promise<ActionResponse> {
+    return handleStockOpname(formData);
+}
+
 export async function updateStockOpnameAction(id: string, formData: StockOpnameData): Promise<ActionResponse> {
-  try {
-    const validatedData = formSchema.parse(formData);
-    const app = getFirebaseAdminApp();
-    const db = getFirestore(app);
-
-    const keadaanBulanLaluJml = validatedData.keadaanBulanLaluBaik + validatedData.keadaanBulanLaluRusak;
-    const pemasukanJml = validatedData.pemasukanBaik + validatedData.pemasukanRusak;
-    const pengeluaranJml = validatedData.pengeluaranBaik + validatedData.pengeluaranRusak;
-    const keadaanBulanLaporanBaik = validatedData.keadaanBulanLaluBaik + validatedData.pemasukanBaik - validatedData.pengeluaranBaik;
-    const keadaanBulanLaporanRusak = validatedData.keadaanBulanLaluRusak + validatedData.pemasukanRusak - validatedData.pengeluaranRusak;
-    const keadaanBulanLaporanJml = keadaanBulanLaporanBaik + keadaanBulanLaporanRusak;
-
-    const dataToUpdate = {
-      ...validatedData,
-      opnameDate: Timestamp.fromDate(validatedData.opnameDate),
-      expireDate: validatedData.expireDate ? Timestamp.fromDate(validatedData.expireDate) : null,
-      keadaanBulanLaluJml,
-      pemasukanJml,
-      pengeluaranJml,
-      keadaanBulanLaporanBaik,
-      keadaanBulanLaporanRusak,
-      keadaanBulanLaporanJml,
-    };
-
-    await db.collection("stock-opnames").doc(id).update(dataToUpdate);
-    return { success: true };
-  } catch (error: any) {
-    console.error("Error updating stock opname:", error);
-    return { success: false, error: error.message || "Gagal memperbarui data." };
-  }
+    return handleStockOpname(formData, id);
 }
 
-// Fungsi untuk menghapus data (DELETE)
 export async function deleteStockOpnameAction(id: string): Promise<ActionResponse> {
     try {
         const app = getFirebaseAdminApp();

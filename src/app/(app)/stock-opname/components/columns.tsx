@@ -23,24 +23,48 @@ export interface StockOpnameActionHandlers {
 
 export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<StockOpname>[] => [
   {
-    accessorKey: "medicineName",
     header: "Nama Obat",
+    accessorKey: "medicineName",
   },
   {
-    accessorKey: "keadaanBulanLaporanJml",
-    header: "Stok Akhir",
+      header: "Keadaan Bulan Lalu",
+      columns: [
+          { header: "Baik", accessorKey: "keadaanBulanLaluBaik" },
+          { header: "Rusak", accessorKey: "keadaanBulanLaluRusak" },
+          { header: "Jml", accessorKey: "keadaanBulanLaluJml" },
+      ],
   },
   {
-    accessorKey: "opnameDate",
+      header: "Pemasukan",
+      columns: [
+          { header: "Baik", accessorKey: "pemasukanBaik" },
+          { header: "Rusak", accessorKey: "pemasukanRusak" },
+          { header: "Jml", accessorKey: "pemasukanJml" },
+      ],
+  },
+  {
+      header: "Pengeluaran",
+      columns: [
+          { header: "Baik", accessorKey: "pengeluaranBaik" },
+          { header: "Rusak", accessorKey: "pengeluaranRusak" },
+          { header: "Jml", accessorKey: "pengeluaranJml" },
+      ],
+  },
+  {
+      header: "Keadaan Bulan Laporan",
+      columns: [
+          { header: "Baik", accessorKey: "keadaanBulanLaporanBaik" },
+          { header: "Rusak", accessorKey: "keadaanBulanLaporanRusak" },
+          { header: "Jml", accessorKey: "keadaanBulanLaporanJml" },
+      ],
+  },
+  {
     header: "Tanggal Catat",
+    accessorKey: "opnameDate",
     cell: ({ row }) => {
         const date = row.getValue("opnameDate") as Date;
         return <span>{format(date, "d LLL yyyy", { locale: id })}</span>
     }
-  },
-  {
-    accessorKey: "keterangan",
-    header: "Keterangan",
   },
   {
     id: "actions",
