@@ -63,8 +63,14 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
     header: "Tanggal Catat",
     accessorKey: "opnameDate",
     cell: ({ row }) => {
-        const date = row.getValue("opnameDate") as Date;
-        return <div className="text-center">{format(date, "d LLL yyyy", { locale: id })}</div>
+        const date = row.getValue("opnameDate");
+        // --- PERBAIKAN DI SINI ---
+        // Cek apakah 'date' adalah objek Date yang valid sebelum memformatnya
+        if (date instanceof Date && !isNaN(date.getTime())) {
+            return <div className="text-center">{format(date, "d LLL yyyy", { locale: id })}</div>;
+        }
+        // Jika tidak valid, tampilkan placeholder atau string kosong
+        return <div className="text-center text-red-500">Invalid Date</div>;
     }
   },
   {
