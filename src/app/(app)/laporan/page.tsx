@@ -68,7 +68,6 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // State baru untuk pilihan bulan, tahun, dan tanggal cetak
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [printDate, setPrintDate] = useState<Date | undefined>(new Date());
@@ -89,7 +88,6 @@ export default function ReportPage() {
     setLoading(true);
     setReportData([]);
 
-    // Kalkulasi tanggal mulai dan selesai berdasarkan bulan dan tahun yang dipilih
     const startDate = startOfMonth(new Date(selectedYear, selectedMonth));
     const endDate = endOfMonth(new Date(selectedYear, selectedMonth));
 
@@ -239,57 +237,59 @@ export default function ReportPage() {
     doc.save(`laporan-stock-opname-${format(new Date(), "yyyy-MM-dd")}.pdf`);
   };
   
+  // --- PERBAIKAN DIMULAI DI SINI ---
   const columns: ColumnDef<ReportData>[] = [
     {
         id: 'medicineNameGroup',
         header: () => <div className="text-left">Nama Obat</div>,
-        accessorKey: "medicineName",
-        cell: ({ row }) => <div className="text-left font-medium">{row.getValue("medicineName")}</div>,
+        cell: ({ row }) => <div className="text-left font-medium">{row.original.medicineName}</div>,
     },
     {
         id: 'keadaanBulanLaluGroup',
         header: () => <div className="text-center">Keadaan Bulan Lalu</div>,
         columns: [
-            { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaluBaik" },
-            { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaluRusak" },
-            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaluJml" },
+            { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaluBaik", cell: ({ row }) => <div className="text-center">{row.original.keadaanBulanLaluBaik}</div> },
+            { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaluRusak", cell: ({ row }) => <div className="text-center">{row.original.keadaanBulanLaluRusak}</div> },
+            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaluJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.keadaanBulanLaluJml}</div> },
         ],
     },
     {
         id: 'pemasukanGroup',
         header: () => <div className="text-center">Pemasukan</div>,
         columns: [
-            { header: () => <div className="text-center">Baik</div>, accessorKey: "pemasukanBaik" },
-            { header: () => <div className="text-center">Rusak</div>, accessorKey: "pemasukanRusak" },
-            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pemasukanJml" },
+            { header: () => <div className="text-center">Baik</div>, accessorKey: "pemasukanBaik", cell: ({ row }) => <div className="text-center">{row.original.pemasukanBaik}</div> },
+            { header: () => <div className="text-center">Rusak</div>, accessorKey: "pemasukanRusak", cell: ({ row }) => <div className="text-center">{row.original.pemasukanRusak}</div> },
+            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pemasukanJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.pemasukanJml}</div> },
         ],
     },
     {
         id: 'pengeluaranGroup',
         header: () => <div className="text-center">Pengeluaran</div>,
         columns: [
-            { header: () => <div className="text-center">Baik</div>, accessorKey: "pengeluaranBaik" },
-            { header: () => <div className="text-center">Rusak</div>, accessorKey: "pengeluaranRusak" },
-            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pengeluaranJml" },
+            { header: () => <div className="text-center">Baik</div>, accessorKey: "pengeluaranBaik", cell: ({ row }) => <div className="text-center">{row.original.pengeluaranBaik}</div> },
+            { header: () => <div className="text-center">Rusak</div>, accessorKey: "pengeluaranRusak", cell: ({ row }) => <div className="text-center">{row.original.pengeluaranRusak}</div> },
+            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pengeluaranJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.pengeluaranJml}</div> },
         ],
     },
     {
         id: 'keadaanBulanLaporanGroup',
         header: () => <div className="text-center">Keadaan Bulan Laporan</div>,
         columns: [
-            { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaporanBaik" },
-            { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaporanRusak" },
-            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaporanJml" },
+            { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaporanBaik", cell: ({ row }) => <div className="text-center">{row.original.keadaanBulanLaporanBaik}</div> },
+            { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaporanRusak", cell: ({ row }) => <div className="text-center">{row.original.keadaanBulanLaporanRusak}</div> },
+            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaporanJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.keadaanBulanLaporanJml}</div> },
         ],
     },
     {
         id: 'expireDateGroup',
         header: "Expire Date",
         accessorKey: "expireDate",
+        cell: ({ row }) => <div className="text-center">{row.original.expireDate}</div>,
     },
   ];
+  // --- PERBAIKAN SELESAI DI SINI ---
 
-  const years = [2023, 2024, 2025]; // Anda bisa membuat ini lebih dinamis jika perlu
+  const years = [2023, 2024, 2025];
 
   return (
     <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
@@ -302,7 +302,6 @@ export default function ReportPage() {
         </div>
       </div>
 
-      {/* Bagian Pemilih Periode dan Tanggal Cetak */}
       <div className="flex flex-col md:flex-row items-center gap-4 rounded-lg border p-4">
         <div className="flex flex-col space-y-2">
             <span className="text-sm font-medium">Periode Laporan</span>
@@ -359,7 +358,6 @@ export default function ReportPage() {
         </div>
       </div>
 
-      {/* Bagian Tabel Hasil Laporan */}
       <div className="pt-8">
         <DataTable data={reportData} columns={columns} filterColumn="medicineName" />
       </div>
