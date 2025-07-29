@@ -1,9 +1,10 @@
 'use server';
 
 import { getFirebaseAdminApp } from "@/lib/firebase-admin-app";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { getFirestore, Timestamp, Query } from "firebase-admin/firestore";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import type { User } from "@/lib/types";
 
 // Tipe data lengkap tetap sama
 interface ReportData {
@@ -36,12 +37,16 @@ interface ActionResponse {
 }
 
 interface DateRange {
-    startDate: Date; // Tidak digunakan lagi, tapi kita biarkan untuk konsistensi
     endDate: Date;
 }
 
-export async function getReportDataAction({ endDate }: DateRange): Promise<ActionResponse> {
+// Fungsi sekarang menerima objek 'user' untuk melakukan filter
+export async function getReportDataAction({ endDate }: DateRange, user: User): Promise<ActionResponse> {
   try {
+    if (!user) {
+        throw new Error("User tidak terautentikasi.");
+    }
+
     const app = getFirebaseAdminApp();
     const db = getFirestore(app);
 
@@ -49,14 +54,19 @@ export async function getReportDataAction({ endDate }: DateRange): Promise<Actio
     endOfDay.setHours(23, 59, 59, 999);
 
     const stockOpnamesRef = db.collection("stock-opnames");
-    // 1. Ambil SEMUA catatan hingga akhir periode yang dipilih
-    const q = stockOpnamesRef
-                .where('opnameDate', '<=', Timestamp.fromDate(endOfDay));
+    
+    // --- PERUBAHAN LOGIKA DIMULAI DI SINI ---
+    let q: Query = stockOpnamesRef.where('opnameDate', '<=', Timestamp.fromDate(endOfDay));
+
+    // Jika yang login bukan admin, filter berdasarkan ID pengguna
+    if (user.role !== 'admin') {
+        q = q.where('userId', '==', user.id);
+    }
+    // Admin bisa melihat semua data, jadi tidak perlu filter tambahan
 
     const querySnapshot = await q.get();
     const allRecords = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    // 2. Kelompokkan semua catatan berdasarkan nama obat
     const recordsByMedicine: { [key: string]: any[] } = {};
     for (const record of allRecords) {
         if (!recordsByMedicine[record.medicineName]) {
@@ -65,15 +75,13 @@ export async function getReportDataAction({ endDate }: DateRange): Promise<Actio
         recordsByMedicine[record.medicineName].push(record);
     }
 
-    // 3. Untuk setiap obat, cari catatan TERAKHIR
     const latestRecords = Object.values(recordsByMedicine).map(records => {
         return records.sort((a, b) => b.opnameDate.toDate() - a.opnameDate.toDate())[0];
     });
 
-    // 4. Filter obat yang stok akhirnya sudah habis (0)
     const finalData = latestRecords.filter(record => record.keadaanBulanLaporanJml > 0);
+    // --- PERUBAHAN LOGIKA SELESAI DI SINI ---
 
-    // 5. Format data yang sudah final untuk ditampilkan
     const data: ReportData[] = finalData.map(docData => {
         return {
             id: docData.id,

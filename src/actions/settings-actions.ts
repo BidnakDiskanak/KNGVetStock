@@ -1,12 +1,17 @@
 'use server';
-
+    
 import { getFirebaseAdminApp } from "@/lib/firebase-admin-app";
 import { getFirestore } from "firebase-admin/firestore";
+import type { User } from "@/lib/types";
 
+// Tipe data sekarang mencakup pejabat UPTD
 interface Officials {
     kepalaDinas?: string;
+    nipKepalaDinas?: string;
     kepalaBidang?: string;
-    // Tambahkan field lain jika perlu, contoh: nipKepalaDinas, dll.
+    nipKepalaBidang?: string;
+    kepalaUPTD?: string;
+    nipKepalaUPTD?: string;
 }
 
 interface ActionResponse {
@@ -15,17 +20,27 @@ interface ActionResponse {
     error?: string;
 }
 
-export async function getOfficialsAction(): Promise<ActionResponse> {
+// Fungsi sekarang menerima objek 'user'
+export async function getOfficialsAction(user: User): Promise<ActionResponse> {
   try {
+    if (!user) {
+        throw new Error("User tidak terautentikasi.");
+    }
+
     const app = getFirebaseAdminApp();
     const db = getFirestore(app);
 
-    // Path disesuaikan dengan struktur Anda: settings -> dinas
-    const settingsRef = db.collection("settings").doc("dinas");
+    // --- PERUBAHAN LOGIKA DIMULAI DI SINI ---
+    // Tentukan dokumen mana yang akan dibaca berdasarkan peran pengguna
+    const docId = user.role === 'admin' ? 'dinas' : 'uptd';
+    // --- PERUBAHAN LOGIKA SELESAI DI SINI ---
+
+    const settingsRef = db.collection("settings").doc(docId);
     const doc = await settingsRef.get();
 
     if (!doc.exists) {
-        return { success: true, data: {} }; // Kembalikan objek kosong jika belum ada
+        // Jika dokumen 'uptd' belum ada, kembalikan objek kosong
+        return { success: true, data: {} };
     }
 
     return { success: true, data: doc.data() as Officials };
