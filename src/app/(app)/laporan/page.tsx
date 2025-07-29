@@ -43,6 +43,7 @@ export default function ReportPage() {
 
   useEffect(() => {
     async function fetchOfficials() {
+        // --- PERUBAHAN DI SINI: Kirim data user saat mengambil data pejabat ---
         if (user) {
             const result = await getOfficialsAction(user as User);
             if (result.success && result.data) {
@@ -53,7 +54,7 @@ export default function ReportPage() {
         }
     }
     fetchOfficials();
-  }, [user]);
+  }, [user]); // Tambahkan user sebagai dependency
 
   const handleGenerateReport = async () => {
     if (!user) {
@@ -65,6 +66,7 @@ export default function ReportPage() {
 
     const endDate = endOfMonth(new Date(selectedYear, selectedMonth));
 
+    // --- PERUBAHAN DI SINI: Kirim data user saat mengambil data laporan ---
     const result = await getReportDataAction({ endDate }, user as User);
 
     if (result.success && result.data) {

@@ -31,12 +31,14 @@ export async function getReportDataAction({ endDate }: DateRange, user: User): P
 
     const stockOpnamesRef = db.collection("stock-opnames");
     
+    // --- PERUBAHAN LOGIKA DIMULAI DI SINI ---
     let q: Query = stockOpnamesRef.where('opnameDate', '<=', Timestamp.fromDate(endOfDay));
 
     // Jika yang login bukan admin, filter berdasarkan ID pengguna
     if (user.role !== 'admin') {
         q = q.where('userId', '==', user.id);
     }
+    // Admin bisa melihat semua data, jadi tidak perlu filter tambahan
 
     const querySnapshot = await q.get();
     const allRecords = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -54,6 +56,7 @@ export async function getReportDataAction({ endDate }: DateRange, user: User): P
     });
 
     const finalData = latestRecords.filter(record => record.keadaanBulanLaporanJml > 0);
+    // --- PERUBAHAN LOGIKA SELESAI DI SINI ---
 
     const data: ReportData[] = finalData.map(docData => {
         return {
