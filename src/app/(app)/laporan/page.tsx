@@ -143,28 +143,30 @@ export default function ReportPage() {
     doc.setFontSize(11);
     doc.text(period, margin, margin + 20);
 
+    // --- PERBAIKAN DIMULAI DI SINI ---
     const head = [
         [
             { content: 'NO', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
             { content: 'JENIS OBAT', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-            { content: 'NAMA OBAT', colSpan: 2, styles: { halign: 'center' } },
+            { content: 'NAMA OBAT', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'SATUAN', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
             { content: 'KEADAAN BULAN LALU', colSpan: 3, styles: { halign: 'center' } },
             { content: 'PEMASUKAN', colSpan: 3, styles: { halign: 'center' } },
-            { content: 'PENGELUaran', colSpan: 3, styles: { halign: 'center' } },
+            { content: 'PENGELUARAN', colSpan: 3, styles: { halign: 'center' } },
             { content: 'KEADAAN S/D BULAN LAPORAN', colSpan: 3, styles: { halign: 'center' } },
             { content: 'EXPIRE DATE', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
             { content: 'ASAL BARANG', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
             { content: 'KETERANGAN', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
         ],
         [
-            { content: 'SATUAN', styles: { halign: 'center' } },
-            { content: '' },
+            // Baris kedua sekarang hanya berisi sub-header untuk kolom yang digabung
             'BAIK', 'RUSAK', 'JML',
             'BAIK', 'RUSAK', 'JML',
             'BAIK', 'RUSAK', 'JML',
             'BAIK', 'RUSAK', 'JML',
         ]
     ];
+    // --- PERBAIKAN SELESAI DI SINI ---
 
     const body = reportData.map((item, index) => [
         index + 1,
@@ -237,7 +239,6 @@ export default function ReportPage() {
     doc.save(`laporan-stock-opname-${format(new Date(), "yyyy-MM-dd")}.pdf`);
   };
   
-  // --- PERBAIKAN DIMULAI DI SINI ---
   const columns: ColumnDef<ReportData>[] = [
     {
         id: 'medicineNameGroup',
@@ -287,7 +288,6 @@ export default function ReportPage() {
         cell: ({ row }) => <div className="text-center">{row.original.expireDate}</div>,
     },
   ];
-  // --- PERBAIKAN SELESAI DI SINI ---
 
   const years = [2023, 2024, 2025];
 
