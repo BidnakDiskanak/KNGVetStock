@@ -18,7 +18,8 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { createStockOpnameAction, updateStockOpnameAction } from "@/actions/stock-opname-actions";
-import type { StockOpname } from "@/lib/types";
+import type { StockOpname, User } from "@/lib/types";
+import { useUser } from "@/contexts/UserProvider"; // Import useUser
 
 const formSchema = z.object({
   opnameDate: z.date({ required_error: "Tanggal stock opname wajib diisi." }),
@@ -46,6 +47,7 @@ interface StockOpnameFormSheetProps {
 
 export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpnameFormSheetProps) {
   const { toast } = useToast();
+  const { user } = useUser(); // Dapatkan data pengguna yang sedang login
   const isEditMode = !!opnameData;
 
   const form = useForm<StockOpnameFormValues>({
@@ -76,9 +78,14 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
   }, [opnameData, form]);
 
   async function onSubmit(values: StockOpnameFormValues) {
+    if (!user) {
+        toast({ title: "Error", description: "Pengguna tidak ditemukan.", variant: "destructive" });
+        return;
+    }
+
     const action = isEditMode
-      ? updateStockOpnameAction(opnameData.id, values)
-      : createStockOpnameAction(values);
+      ? updateStockOpnameAction(opnameData.id, values, user as User)
+      : createStockOpnameAction(values, user as User);
 
     const result = await action;
 
@@ -109,7 +116,7 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
             <div className="py-4">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        {/* Form fields go here */}
+                        {/* ... (Isi formulir tetap sama) ... */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField control={form.control} name="opnameDate" render={({ field }) => (
                                 <FormItem className="flex flex-col"><FormLabel>Tanggal Pencatatan</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>

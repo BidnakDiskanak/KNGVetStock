@@ -3,6 +3,7 @@
 import { getFirebaseAdminApp } from "@/lib/firebase-admin-app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { z } from "zod";
+import type { User } from "@/lib/types";
 
 type ActionResponse = {
     success: boolean;
@@ -16,7 +17,6 @@ const formSchema = z.object({
   satuan: z.string().optional(),
   expireDate: z.date().optional(),
   asalBarang: z.string().optional(),
-  // Keadaan bulan lalu sekarang opsional, karena akan diisi otomatis
   keadaanBulanLaluBaik: z.coerce.number().min(0).default(0).optional(),
   keadaanBulanLaluRusak: z.coerce.number().min(0).default(0).optional(),
   pemasukanBaik: z.coerce.number().min(0).default(0),
@@ -28,7 +28,8 @@ const formSchema = z.object({
 
 type StockOpnameData = z.infer<typeof formSchema>;
 
-async function handleStockOpname(formData: StockOpnameData, existingId?: string): Promise<ActionResponse> {
+// Fungsi utama sekarang menerima data pengguna
+async function handleStockOpname(formData: StockOpnameData, user: User, existingId?: string): Promise<ActionResponse> {
   try {
     const validatedData = formSchema.parse(formData);
     const app = getFirebaseAdminApp();
@@ -38,8 +39,6 @@ async function handleStockOpname(formData: StockOpnameData, existingId?: string)
     let keadaanBulanLaluBaik = validatedData.keadaanBulanLaluBaik || 0;
     let keadaanBulanLaluRusak = validatedData.keadaanBulanLaluRusak || 0;
 
-    // --- LOGIKA KALKULASI OTOMATIS ---
-    // Cari entri terakhir untuk obat dengan nama yang sama
     const lastEntryQuery = stockOpnamesRef
         .where('medicineName', '==', validatedData.medicineName)
         .orderBy('opnameDate', 'desc')
@@ -49,13 +48,10 @@ async function handleStockOpname(formData: StockOpnameData, existingId?: string)
 
     if (!lastEntrySnapshot.empty) {
         const lastEntryData = lastEntrySnapshot.docs[0].data();
-        // Jika ditemukan, gunakan stok akhir dari entri terakhir sebagai stok awal entri ini
         keadaanBulanLaluBaik = lastEntryData.keadaanBulanLaporanBaik;
         keadaanBulanLaluRusak = lastEntryData.keadaanBulanLaporanRusak;
     }
-    // Jika tidak ditemukan (ini entri pertama), gunakan nilai dari form.
 
-    // --- Lakukan Kalkulasi Ulang ---
     const keadaanBulanLaluJml = keadaanBulanLaluBaik + keadaanBulanLaluRusak;
     const pemasukanJml = validatedData.pemasukanBaik + validatedData.pemasukanRusak;
     const pengeluaranJml = validatedData.pengeluaranBaik + validatedData.pengeluaranRusak;
@@ -76,13 +72,15 @@ async function handleStockOpname(formData: StockOpnameData, existingId?: string)
       keadaanBulanLaporanRusak,
       keadaanBulanLaporanJml,
       createdAt: Timestamp.now(),
+      // --- PERUBAHAN DI SINI: Simpan info pengguna ---
+      userId: user.id,
+      userLocation: user.location,
+      userName: user.name,
     };
     
     if (existingId) {
-        // Mode UPDATE
         await stockOpnamesRef.doc(existingId).update(dataToSave);
     } else {
-        // Mode CREATE
         await stockOpnamesRef.add(dataToSave);
     }
 
@@ -93,12 +91,12 @@ async function handleStockOpname(formData: StockOpnameData, existingId?: string)
   }
 }
 
-export async function createStockOpnameAction(formData: StockOpnameData): Promise<ActionResponse> {
-    return handleStockOpname(formData);
+export async function createStockOpnameAction(formData: StockOpnameData, user: User): Promise<ActionResponse> {
+    return handleStockOpname(formData, user);
 }
 
-export async function updateStockOpnameAction(id: string, formData: StockOpnameData): Promise<ActionResponse> {
-    return handleStockOpname(formData, id);
+export async function updateStockOpnameAction(id: string, formData: StockOpnameData, user: User): Promise<ActionResponse> {
+    return handleStockOpname(formData, user, id);
 }
 
 export async function deleteStockOpnameAction(id: string): Promise<ActionResponse> {

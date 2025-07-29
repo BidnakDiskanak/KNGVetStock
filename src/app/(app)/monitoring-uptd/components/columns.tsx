@@ -1,87 +1,109 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { Badge } from "@/components/ui/badge"
-import { DataTableColumnHeader } from "@/app/(app)/stock-opname/components/data-table-column-header"
-import type { Medicine } from "@/lib/types"
-import { differenceInDays, format } from "date-fns"
+import { MoreHorizontal } from "lucide-react"
+import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { cn } from "@/lib/utils"
-import { Timestamp } from "firebase/firestore"
 
-// Read-only columns for monitoring page
-export const getMonitoringColumns = (): ColumnDef<Medicine>[] => [
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import type { StockOpname } from "@/lib/types"
+
+export interface StockOpnameActionHandlers {
+  onEdit: (opname: StockOpname) => void;
+  onDelete: (opname: StockOpname) => void;
+}
+
+export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<StockOpname>[] => [
   {
-    accessorKey: "locationName",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Lokasi UPTD" />,
-     cell: ({ row }) => {
-        const locationName = row.getValue("locationName") as string;
-        return <Badge variant='secondary' className="capitalize">{locationName || 'N/A'}</Badge>
-    },
-     filterFn: (row, id, value) => {
-        const rowValue = row.getValue(id) as string | undefined;
-
-        if (!rowValue) {
-            return false;
+    id: 'medicineNameGroup',
+    header: () => <div className="text-left">Nama Obat</div>,
+    accessorKey: "medicineName",
+    cell: ({ row }) => <div className="text-left font-medium">{row.original.medicineName}</div>,
+  },
+  {
+      id: 'keadaanBulanLaluGroup',
+      header: () => <div className="text-center">Keadaan Bulan Lalu</div>,
+      columns: [
+          { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaluBaik", cell: ({ row }) => <div className="text-center">{row.original.keadaanBulanLaluBaik}</div> },
+          { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaluRusak", cell: ({ row }) => <div className="text-center">{row.original.keadaanBulanLaluRusak}</div> },
+          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaluJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.keadaanBulanLaluJml}</div> },
+      ],
+  },
+  {
+      id: 'pemasukanGroup',
+      header: () => <div className="text-center">Pemasukan</div>,
+      columns: [
+          { header: () => <div className="text-center">Baik</div>, accessorKey: "pemasukanBaik", cell: ({ row }) => <div className="text-center">{row.original.pemasukanBaik}</div> },
+          { header: () => <div className="text-center">Rusak</div>, accessorKey: "pemasukanRusak", cell: ({ row }) => <div className="text-center">{row.original.pemasukanRusak}</div> },
+          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pemasukanJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.pemasukanJml}</div> },
+      ],
+  },
+  {
+      id: 'pengeluaranGroup',
+      header: () => <div className="text-center">Pengeluaran</div>,
+      columns: [
+          { header: () => <div className="text-center">Baik</div>, accessorKey: "pengeluaranBaik", cell: ({ row }) => <div className="text-center">{row.original.pengeluaranBaik}</div> },
+          { header: () => <div className="text-center">Rusak</div>, accessorKey: "pengeluaranRusak", cell: ({ row }) => <div className="text-center">{row.original.pengeluaranRusak}</div> },
+          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pengeluaranJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.pengeluaranJml}</div> },
+      ],
+  },
+  {
+      id: 'keadaanBulanLaporanGroup',
+      header: () => <div className="text-center">Keadaan Bulan Laporan</div>,
+      columns: [
+          { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaporanBaik", cell: ({ row }) => <div className="text-center">{row.original.keadaanBulanLaporanBaik}</div> },
+          { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaporanRusak", cell: ({ row }) => <div className="text-center">{row.original.keadaanBulanLaporanRusak}</div> },
+          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaporanJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.keadaanBulanLaporanJml}</div> },
+      ],
+  },
+  {
+    id: 'opnameDateGroup',
+    header: "Tanggal Catat",
+    accessorKey: "opnameDate",
+    cell: ({ row }) => {
+        const date = row.original.opnameDate;
+        if (date instanceof Date && !isNaN(date.getTime())) {
+            return <div className="text-center">{format(date, "d LLL yyyy", { locale: id })}</div>
         }
-        
-        return value.includes(rowValue);
-    },
+        return <div className="text-center">-</div>;
+    }
   },
   {
-    accessorKey: "name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Nama Obat" />
-    ),
-  },
-  {
-    accessorKey: "type",
-    header: "Jenis Obat",
-  },
-  {
-    accessorKey: "unit",
-    header: "Satuan",
-  },
-  {
-    accessorKey: "sisa_baik",
-    header: ({ column }) => (
-       <DataTableColumnHeader column={column} title="Sisa Stok" />
-    ),
+    id: "actions",
     cell: ({ row }) => {
-       const sisa_baik = (row.getValue("sisa_baik") || 0) as number;
-       const sisa_rusak = (row.original.sisa_rusak || 0) as number;
-       const total = sisa_baik + sisa_rusak;
-      return <div className="text-center font-bold">{total || 0}</div>
-    },
-  },
-  {
-    accessorKey: "expiryDate",
-    header: ({ column }) => (
-       <DataTableColumnHeader column={column} title="Tgl. Kadaluarsa" />
-    ),
-    cell: ({ row }) => {
-      const expiry = row.getValue("expiryDate") as Date | Timestamp;
-      const expiryDate = expiry instanceof Timestamp ? expiry.toDate() : expiry;
-      const daysUntilExpiry = differenceInDays(expiryDate, new Date());
-
-      let badgeVariant: "default" | "secondary" | "destructive" | "outline" = "secondary";
-      if (daysUntilExpiry < 0) {
-        badgeVariant = "destructive";
-      } else if (daysUntilExpiry <= 30) {
-        badgeVariant = "destructive";
-      } else if (daysUntilExpiry <= 90) {
-        badgeVariant = "outline";
-      }
+      const opname = row.original
 
       return (
-        <Badge variant={badgeVariant} className={cn(daysUntilExpiry <= 30 && "animate-pulse")}>
-          {format(expiryDate, "dd MMM yyyy", { locale: id })}
-        </Badge>
-      );
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Buka menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handlers.onEdit(opname)}>
+              Ubah Data
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                onClick={() => handlers.onDelete(opname)}
+            >
+              Hapus Data
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
     },
   },
-  {
-    accessorKey: "notes",
-    header: "Keterangan",
-  }
 ]

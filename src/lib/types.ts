@@ -62,6 +62,17 @@ export interface StockOpname {
     keterangan?: string;
 }
 
+export interface MonitoringData {
+    id: string;
+    location: string;
+    medicineName: string;
+    jenisObat?: string;
+    satuan?: string;
+    sisaStok: number;
+    expireDate: Date | null;
+    keterangan?: string;
+}
+
 export type AppSettings = {
     dinasName?: string;
     address?: string;
