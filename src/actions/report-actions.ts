@@ -4,31 +4,7 @@ import { getFirebaseAdminApp } from "@/lib/firebase-admin-app";
 import { getFirestore, Timestamp, Query } from "firebase-admin/firestore";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import type { User } from "@/lib/types";
-
-// Tipe data lengkap tetap sama
-interface ReportData {
-  id: string;
-  opnameDate: string;
-  medicineName: string;
-  jenisObat?: string;
-  satuan?: string;
-  expireDate?: string;
-  asalBarang?: string;
-  keadaanBulanLaluBaik: number;
-  keadaanBulanLaluRusak: number;
-  keadaanBulanLaluJml: number;
-  pemasukanBaik: number;
-  pemasukanRusak: number;
-  pemasukanJml: number;
-  pengeluaranBaik: number;
-  pengeluaranRusak: number;
-  pengeluaranJml: number;
-  keadaanBulanLaporanBaik: number;
-  keadaanBulanLaporanRusak: number;
-  keadaanBulanLaporanJml: number;
-  keterangan?: string;
-}
+import type { User, ReportData } from "@/lib/types";
 
 interface ActionResponse {
     success: boolean;
@@ -55,14 +31,12 @@ export async function getReportDataAction({ endDate }: DateRange, user: User): P
 
     const stockOpnamesRef = db.collection("stock-opnames");
     
-    // --- PERUBAHAN LOGIKA DIMULAI DI SINI ---
     let q: Query = stockOpnamesRef.where('opnameDate', '<=', Timestamp.fromDate(endOfDay));
 
     // Jika yang login bukan admin, filter berdasarkan ID pengguna
     if (user.role !== 'admin') {
         q = q.where('userId', '==', user.id);
     }
-    // Admin bisa melihat semua data, jadi tidak perlu filter tambahan
 
     const querySnapshot = await q.get();
     const allRecords = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -80,7 +54,6 @@ export async function getReportDataAction({ endDate }: DateRange, user: User): P
     });
 
     const finalData = latestRecords.filter(record => record.keadaanBulanLaporanJml > 0);
-    // --- PERUBAHAN LOGIKA SELESAI DI SINI ---
 
     const data: ReportData[] = finalData.map(docData => {
         return {
