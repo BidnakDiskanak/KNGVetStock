@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { id } from "date-fns/locale";
 import { Calendar as CalendarIcon, Printer } from "lucide-react";
 import jsPDF from "jspdf";
@@ -15,6 +15,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from "@/components/ui/select";
 import { DataTable } from '@/app/(app)/stock-opname/components/data-table';
 import { getReportDataAction } from "@/actions/report-actions";
 import { getOfficialsAction } from "@/actions/settings-actions";
@@ -56,12 +63,15 @@ interface Officials {
 
 export default function ReportPage() {
   const { user } = useUser();
-  const [startDate, setStartDate] = useState<Date | undefined>();
-  const [endDate, setEndDate] = useState<Date | undefined>();
   const [reportData, setReportData] = useState<ReportData[]>([]);
   const [officials, setOfficials] = useState<Officials>({});
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // State baru untuk pilihan bulan, tahun, dan tanggal cetak
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [printDate, setPrintDate] = useState<Date | undefined>(new Date());
 
   useEffect(() => {
     async function fetchOfficials() {
@@ -76,17 +86,12 @@ export default function ReportPage() {
   }, []);
 
   const handleGenerateReport = async () => {
-    if (!startDate || !endDate) {
-      toast({
-        title: "Peringatan",
-        description: "Silakan pilih tanggal mulai dan tanggal selesai.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
     setReportData([]);
+
+    // Kalkulasi tanggal mulai dan selesai berdasarkan bulan dan tahun yang dipilih
+    const startDate = startOfMonth(new Date(selectedYear, selectedMonth));
+    const endDate = endOfMonth(new Date(selectedYear, selectedMonth));
 
     const result = await getReportDataAction({ startDate, endDate });
 
@@ -135,7 +140,7 @@ export default function ReportPage() {
         doc.text(user?.location?.toUpperCase() || 'LOKASI UPTD', pageWidth / 2, margin + 5, { align: 'center' });
     }
 
-    const period = `PERIODE: ${startDate ? format(startDate, "MMMM yyyy", { locale: id }).toUpperCase() : ''}`;
+    const period = `PERIODE: ${format(new Date(selectedYear, selectedMonth), "MMMM yyyy", { locale: id }).toUpperCase()}`;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.text(period, margin, margin + 20);
@@ -199,7 +204,7 @@ export default function ReportPage() {
     }
 
     doc.setFontSize(10);
-    const today = format(new Date(), "d MMMM yyyy", { locale: id });
+    const signatureDate = printDate ? format(printDate, "d MMMM yyyy", { locale: id }) : format(new Date(), "d MMMM yyyy", { locale: id });
     const placeholderName = "(.........................................)";
     const placeholderNip = "NIP. .....................................";
 
@@ -209,13 +214,13 @@ export default function ReportPage() {
         doc.text("Kabupaten Kuningan", margin, signatureY + 8);
         doc.text(officials.kepalaDinas || placeholderName, margin, signatureY + 28);
         doc.text(officials.nipKepalaDinas ? `NIP. ${officials.nipKepalaDinas}` : placeholderNip, margin, signatureY + 32);
-
+        
         const centerPos = pageWidth / 2;
         doc.text("Kepala Bidang Peternakan", centerPos, signatureY + 4, { align: 'center' });
         doc.text(officials.kepalaBidang || placeholderName, centerPos, signatureY + 28, { align: 'center' });
         doc.text(officials.nipKepalaBidang ? `NIP. ${officials.nipKepalaBidang}` : placeholderNip, centerPos, signatureY + 32, { align: 'center' });
 
-        doc.text(`Kuningan, ${today}`, pageWidth - margin, signatureY, { align: 'right' });
+        doc.text(`Kuningan, ${signatureDate}`, pageWidth - margin, signatureY, { align: 'right' });
         doc.text("Petugas,", pageWidth - margin, signatureY + 4, { align: 'right' });
         doc.text(user?.name || placeholderName, pageWidth - margin, signatureY + 28, { align: 'right' });
         doc.text(user?.nip ? `NIP. ${user.nip}` : placeholderNip, pageWidth - margin, signatureY + 32, { align: 'right' });
@@ -225,7 +230,7 @@ export default function ReportPage() {
         doc.text(placeholderName, margin, signatureY + 28);
         doc.text(placeholderNip, margin, signatureY + 32);
 
-        doc.text(`Kuningan, ${today}`, pageWidth - margin, signatureY, { align: 'right' });
+        doc.text(`Kuningan, ${signatureDate}`, pageWidth - margin, signatureY, { align: 'right' });
         doc.text("Yang Melaporkan,", pageWidth - margin, signatureY + 4, { align: 'right' });
         doc.text(user?.name || placeholderName, pageWidth - margin, signatureY + 28, { align: 'right' });
         doc.text(user?.nip ? `NIP. ${user.nip}` : placeholderNip, pageWidth - margin, signatureY + 32, { align: 'right' });
@@ -233,57 +238,52 @@ export default function ReportPage() {
 
     doc.save(`laporan-stock-opname-${format(new Date(), "yyyy-MM-dd")}.pdf`);
   };
-
+  
   const columns: ColumnDef<ReportData>[] = [
     {
-        id: 'medicineNameGroup', // <-- ID UNTUK GRUP
         header: () => <div className="text-left">Nama Obat</div>,
         accessorKey: "medicineName",
         cell: ({ row }) => <div className="text-left font-medium">{row.getValue("medicineName")}</div>,
     },
     {
-        id: 'keadaanBulanLaluGroup', // <-- ID UNTUK GRUP
         header: () => <div className="text-center">Keadaan Bulan Lalu</div>,
         columns: [
-            { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaluBaik", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaluBaik")}</div> },
-            { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaluRusak", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaluRusak")}</div> },
-            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaluJml", cell: ({ row }) => <div className="text-center font-bold">{row.getValue("keadaanBulanLaluJml")}</div> },
+            { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaluBaik" },
+            { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaluRusak" },
+            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaluJml" },
         ],
     },
     {
-        id: 'pemasukanGroup', // <-- ID UNTUK GRUP
         header: () => <div className="text-center">Pemasukan</div>,
         columns: [
-            { header: () => <div className="text-center">Baik</div>, accessorKey: "pemasukanBaik", cell: ({ row }) => <div className="text-center">{row.getValue("pemasukanBaik")}</div> },
-            { header: () => <div className="text-center">Rusak</div>, accessorKey: "pemasukanRusak", cell: ({ row }) => <div className="text-center">{row.getValue("pemasukanRusak")}</div> },
-            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pemasukanJml", cell: ({ row }) => <div className="text-center font-bold">{row.getValue("pemasukanJml")}</div> },
+            { header: () => <div className="text-center">Baik</div>, accessorKey: "pemasukanBaik" },
+            { header: () => <div className="text-center">Rusak</div>, accessorKey: "pemasukanRusak" },
+            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pemasukanJml" },
         ],
     },
     {
-        id: 'pengeluaranGroup', // <-- ID UNTUK GRUP
         header: () => <div className="text-center">Pengeluaran</div>,
         columns: [
-            { header: () => <div className="text-center">Baik</div>, accessorKey: "pengeluaranBaik", cell: ({ row }) => <div className="text-center">{row.getValue("pengeluaranBaik")}</div> },
-            { header: () => <div className="text-center">Rusak</div>, accessorKey: "pengeluaranRusak", cell: ({ row }) => <div className="text-center">{row.getValue("pengeluaranRusak")}</div> },
-            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pengeluaranJml", cell: ({ row }) => <div className="text-center font-bold">{row.getValue("pengeluaranJml")}</div> },
+            { header: () => <div className="text-center">Baik</div>, accessorKey: "pengeluaranBaik" },
+            { header: () => <div className="text-center">Rusak</div>, accessorKey: "pengeluaranRusak" },
+            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pengeluaranJml" },
         ],
     },
     {
-        id: 'keadaanBulanLaporanGroup', // <-- ID UNTUK GRUP
         header: () => <div className="text-center">Keadaan Bulan Laporan</div>,
         columns: [
-            { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaporanBaik", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaporanBaik")}</div> },
-            { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaporanRusak", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaporanRusak")}</div> },
-            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaporanJml", cell: ({ row }) => <div className="text-center font-bold">{row.getValue("keadaanBulanLaporanJml")}</div> },
+            { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaporanBaik" },
+            { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaporanRusak" },
+            { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaporanJml" },
         ],
     },
     {
-        id: 'expireDateGroup', // <-- ID UNTUK GRUP
         header: "Expire Date",
         accessorKey: "expireDate",
-        cell: ({ row }) => <div className="text-center">{row.getValue("expireDate")}</div>,
     },
   ];
+
+  const years = [2023, 2024, 2025]; // Anda bisa membuat ini lebih dinamis jika perlu
 
   return (
     <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
@@ -296,38 +296,49 @@ export default function ReportPage() {
         </div>
       </div>
 
+      {/* Bagian Pemilih Periode dan Tanggal Cetak */}
       <div className="flex flex-col md:flex-row items-center gap-4 rounded-lg border p-4">
         <div className="flex flex-col space-y-2">
-            <span className="text-sm font-medium">Tanggal Mulai</span>
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Button
-                    variant={"outline"}
-                    className={cn("w-[240px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}
-                    >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus />
-                </PopoverContent>
-            </Popover>
+            <span className="text-sm font-medium">Periode Laporan</span>
+            <div className="flex gap-2">
+                <Select onValueChange={(value) => setSelectedMonth(parseInt(value))} defaultValue={String(selectedMonth)}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Pilih Bulan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {Array.from({ length: 12 }).map((_, i) => (
+                            <SelectItem key={i} value={String(i)}>
+                                {format(new Date(2000, i), "LLLL", { locale: id })}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Select onValueChange={(value) => setSelectedYear(parseInt(value))} defaultValue={String(selectedYear)}>
+                    <SelectTrigger className="w-[100px]">
+                        <SelectValue placeholder="Pilih Tahun" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {years.map(year => (
+                            <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
         </div>
         <div className="flex flex-col space-y-2">
-            <span className="text-sm font-medium">Tanggal Selesai</span>
+            <span className="text-sm font-medium">Tanggal Cetak Laporan</span>
             <Popover>
                 <PopoverTrigger asChild>
                     <Button
                     variant={"outline"}
-                    className={cn("w-[240px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}
+                    className={cn("w-[240px] justify-start text-left font-normal", !printDate && "text-muted-foreground")}
                     >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                    {printDate ? format(printDate, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
+                    <Calendar mode="single" selected={printDate} onSelect={setPrintDate} initialFocus />
                 </PopoverContent>
             </Popover>
         </div>
@@ -342,6 +353,7 @@ export default function ReportPage() {
         </div>
       </div>
 
+      {/* Bagian Tabel Hasil Laporan */}
       <div className="pt-8">
         <DataTable data={reportData} columns={columns} filterColumn="medicineName" />
       </div>
