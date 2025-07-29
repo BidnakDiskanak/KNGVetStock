@@ -28,7 +28,6 @@ const formSchema = z.object({
 
 type StockOpnameData = z.infer<typeof formSchema>;
 
-// Fungsi utama sekarang menerima data pengguna
 async function handleStockOpname(formData: StockOpnameData, user: User, existingId?: string): Promise<ActionResponse> {
   try {
     const validatedData = formSchema.parse(formData);
@@ -72,10 +71,11 @@ async function handleStockOpname(formData: StockOpnameData, user: User, existing
       keadaanBulanLaporanRusak,
       keadaanBulanLaporanJml,
       createdAt: Timestamp.now(),
-      // --- PERUBAHAN DI SINI: Simpan info pengguna ---
+      // --- PERUBAHAN DI SINI: Simpan info pengguna LENGKAP ---
       userId: user.id,
       userLocation: user.location,
       userName: user.name,
+      userRole: user.role, // <-- TAMBAHKAN INI
     };
     
     if (existingId) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore'; // Import 'where'
 import { db } from '@/lib/firebase';
 import type { MonitoringData } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,7 +13,14 @@ export default function MonitoringPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, "stock-opnames"), orderBy("opnameDate", "desc"));
+    // --- PERUBAHAN LOGIKA DIMULAI DI SINI ---
+    // Ambil data HANYA dari user dengan peran 'user' (UPTD)
+    const q = query(
+        collection(db, "stock-opnames"), 
+        where("userRole", "==", "user"), 
+        orderBy("opnameDate", "desc")
+    );
+    // --- PERUBAHAN LOGIKA SELESAI DI SINI ---
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const monitoringData: MonitoringData[] = querySnapshot.docs.map(doc => {
@@ -32,6 +39,9 @@ export default function MonitoringPage() {
       });
       setData(monitoringData);
       setLoading(false);
+    }, (error) => {
+        console.error("Gagal memuat data monitoring:", error);
+        setLoading(false);
     });
 
     return () => unsubscribe();
