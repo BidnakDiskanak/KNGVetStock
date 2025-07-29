@@ -31,21 +31,18 @@ export default function StockOpnamePage() {
         setLoading(false);
         return;
     };
-    
+
     const q = query(collection(db, "stock-opnames"), orderBy("opnameDate", "desc"));
-    
+
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const opnamesData: StockOpname[] = [];
       querySnapshot.forEach(doc => {
           const data = doc.data();
-          
-          // --- PERBAIKAN DIMULAI DI SINI ---
-          // Logika defensif untuk memproses data dari Firestore
+
           const opnameDate = data.opnameDate && typeof data.opnameDate.toDate === 'function' 
               ? data.opnameDate.toDate() 
               : null;
 
-          // Lewati seluruh dokumen jika tanggal pencatatan utamanya tidak valid
           if (!opnameDate || isNaN(opnameDate.getTime())) {
               console.warn(`Melewati dokumen ${doc.id} karena opnameDate tidak valid:`, data.opnameDate);
               return; 
@@ -57,10 +54,9 @@ export default function StockOpnamePage() {
 
           opnamesData.push({
               id: doc.id,
-              medicineName: data.medicineName || "Nama Tidak Ditemukan", // Memberi nilai default
+              medicineName: data.medicineName || "Nama Tidak Ditemukan",
               opnameDate: opnameDate,
               expireDate: expireDate && !isNaN(expireDate.getTime()) ? expireDate : undefined,
-              // Memberi nilai default untuk semua field lain untuk keamanan
               jenisObat: data.jenisObat || '',
               satuan: data.satuan || '',
               asalBarang: data.asalBarang || '',
@@ -78,7 +74,6 @@ export default function StockOpnamePage() {
               keadaanBulanLaporanJml: data.keadaanBulanLaporanJml || 0,
               keterangan: data.keterangan || '',
           } as StockOpname);
-          // --- PERBAIKAN SELESAI DI SINI ---
       });
 
       setStockOpnames(opnamesData);
@@ -94,7 +89,7 @@ export default function StockOpnamePage() {
     });
 
     return () => unsubscribe();
-    
+
   }, [user, toast]);
 
   const handleAdd = () => {
@@ -114,7 +109,7 @@ export default function StockOpnamePage() {
 
   const handleDelete = async () => {
     if (!opnameToDelete) return;
-    
+
     const result = await deleteStockOpnameAction(opnameToDelete.id);
 
     if (result.success) {
@@ -137,7 +132,7 @@ export default function StockOpnamePage() {
     onEdit: handleEdit,
     onDelete: openDeleteDialog,
   };
-  
+
   const columns = useMemo(() => getColumns(handlers), [handlers]);
 
   if (loading) {

@@ -26,42 +26,42 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
     id: 'medicineNameGroup',
     header: () => <div className="text-left">Nama Obat</div>,
     accessorKey: "medicineName",
-    cell: ({ row }) => <div className="text-left font-medium">{row.getValue("medicineName")}</div>,
+    cell: ({ row }) => <div className="text-left font-medium">{row.original.medicineName}</div>,
   },
   {
       id: 'keadaanBulanLaluGroup',
       header: () => <div className="text-center">Keadaan Bulan Lalu</div>,
       columns: [
-          { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaluBaik", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaluBaik")}</div> },
-          { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaluRusak", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaluRusak")}</div> },
-          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaluJml", cell: ({ row }) => <div className="text-center font-bold">{row.getValue("keadaanBulanLaluJml")}</div> },
+          { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaluBaik", cell: ({ row }) => <div className="text-center">{row.original.keadaanBulanLaluBaik}</div> },
+          { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaluRusak", cell: ({ row }) => <div className="text-center">{row.original.keadaanBulanLaluRusak}</div> },
+          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaluJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.keadaanBulanLaluJml}</div> },
       ],
   },
   {
       id: 'pemasukanGroup',
       header: () => <div className="text-center">Pemasukan</div>,
       columns: [
-          { header: () => <div className="text-center">Baik</div>, accessorKey: "pemasukanBaik", cell: ({ row }) => <div className="text-center">{row.getValue("pemasukanBaik")}</div> },
-          { header: () => <div className="text-center">Rusak</div>, accessorKey: "pemasukanRusak", cell: ({ row }) => <div className="text-center">{row.getValue("pemasukanRusak")}</div> },
-          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pemasukanJml", cell: ({ row }) => <div className="text-center font-bold">{row.getValue("pemasukanJml")}</div> },
+          { header: () => <div className="text-center">Baik</div>, accessorKey: "pemasukanBaik", cell: ({ row }) => <div className="text-center">{row.original.pemasukanBaik}</div> },
+          { header: () => <div className="text-center">Rusak</div>, accessorKey: "pemasukanRusak", cell: ({ row }) => <div className="text-center">{row.original.pemasukanRusak}</div> },
+          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pemasukanJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.pemasukanJml}</div> },
       ],
   },
   {
       id: 'pengeluaranGroup',
       header: () => <div className="text-center">Pengeluaran</div>,
       columns: [
-          { header: () => <div className="text-center">Baik</div>, accessorKey: "pengeluaranBaik", cell: ({ row }) => <div className="text-center">{row.getValue("pengeluaranBaik")}</div> },
-          { header: () => <div className="text-center">Rusak</div>, accessorKey: "pengeluaranRusak", cell: ({ row }) => <div className="text-center">{row.getValue("pengeluaranRusak")}</div> },
-          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pengeluaranJml", cell: ({ row }) => <div className="text-center font-bold">{row.getValue("pengeluaranJml")}</div> },
+          { header: () => <div className="text-center">Baik</div>, accessorKey: "pengeluaranBaik", cell: ({ row }) => <div className="text-center">{row.original.pengeluaranBaik}</div> },
+          { header: () => <div className="text-center">Rusak</div>, accessorKey: "pengeluaranRusak", cell: ({ row }) => <div className="text-center">{row.original.pengeluaranRusak}</div> },
+          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "pengeluaranJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.pengeluaranJml}</div> },
       ],
   },
   {
       id: 'keadaanBulanLaporanGroup',
       header: () => <div className="text-center">Keadaan Bulan Laporan</div>,
       columns: [
-          { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaporanBaik", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaporanBaik")}</div> },
-          { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaporanRusak", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaporanRusak")}</div> },
-          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaporanJml", cell: ({ row }) => <div className="text-center font-bold">{row.getValue("keadaanBulanLaporanJml")}</div> },
+          { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaporanBaik", cell: ({ row }) => <div className="text-center">{row.original.keadaanBulanLaporanBaik}</div> },
+          { header: () => <div className="text-center">Rusak</div>, accessorKey: "keadaanBulanLaporanRusak", cell: ({ row }) => <div className="text-center">{row.original.keadaanBulanLaporanRusak}</div> },
+          { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaporanJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.keadaanBulanLaporanJml}</div> },
       ],
   },
   {
@@ -69,8 +69,7 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
     header: "Tanggal Catat",
     accessorKey: "opnameDate",
     cell: ({ row }) => {
-        const date = row.getValue("opnameDate");
-        // --- PERBAIKAN DI SINI ---
+        const date = row.original.opnameDate;
         if (date instanceof Date && !isNaN(date.getTime())) {
             return <div className="text-center">{format(date, "d LLL yyyy", { locale: id })}</div>
         }
