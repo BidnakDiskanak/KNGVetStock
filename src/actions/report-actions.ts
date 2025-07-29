@@ -5,7 +5,7 @@ import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
-// Definisikan tipe data LENGKAP untuk laporan
+// Tipe data lengkap tetap sama
 interface ReportData {
   id: string;
   opnameDate: string;
@@ -36,11 +36,11 @@ interface ActionResponse {
 }
 
 interface DateRange {
-    startDate: Date;
+    startDate: Date; // Tidak digunakan lagi, tapi kita biarkan untuk konsistensi
     endDate: Date;
 }
 
-export async function getReportDataAction({ startDate, endDate }: DateRange): Promise<ActionResponse> {
+export async function getReportDataAction({ endDate }: DateRange): Promise<ActionResponse> {
   try {
     const app = getFirebaseAdminApp();
     const db = getFirestore(app);
@@ -49,21 +49,36 @@ export async function getReportDataAction({ startDate, endDate }: DateRange): Pr
     endOfDay.setHours(23, 59, 59, 999);
 
     const stockOpnamesRef = db.collection("stock-opnames");
+    // 1. Ambil SEMUA catatan hingga akhir periode yang dipilih
     const q = stockOpnamesRef
-                .where('opnameDate', '>=', Timestamp.fromDate(startDate))
                 .where('opnameDate', '<=', Timestamp.fromDate(endOfDay));
 
     const querySnapshot = await q.get();
+    const allRecords = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    const data: ReportData[] = querySnapshot.docs.map(doc => {
-        const docData = doc.data();
+    // 2. Kelompokkan semua catatan berdasarkan nama obat
+    const recordsByMedicine: { [key: string]: any[] } = {};
+    for (const record of allRecords) {
+        if (!recordsByMedicine[record.medicineName]) {
+            recordsByMedicine[record.medicineName] = [];
+        }
+        recordsByMedicine[record.medicineName].push(record);
+    }
+
+    // 3. Untuk setiap obat, cari catatan TERAKHIR
+    const latestRecords = Object.values(recordsByMedicine).map(records => {
+        return records.sort((a, b) => b.opnameDate.toDate() - a.opnameDate.toDate())[0];
+    });
+
+    // 4. Filter obat yang stok akhirnya sudah habis (0)
+    const finalData = latestRecords.filter(record => record.keadaanBulanLaporanJml > 0);
+
+    // 5. Format data yang sudah final untuk ditampilkan
+    const data: ReportData[] = finalData.map(docData => {
         return {
-            id: doc.id,
-            // Format tanggal menjadi string yang mudah dibaca
+            id: docData.id,
             opnameDate: format(docData.opnameDate.toDate(), "d LLL yyyy", { locale: id }),
             expireDate: docData.expireDate ? format(docData.expireDate.toDate(), "d LLL yyyy", { locale: id }) : '',
-            
-            // Ambil semua data lain dari dokumen
             medicineName: docData.medicineName || '',
             jenisObat: docData.jenisObat || '',
             satuan: docData.satuan || '',
