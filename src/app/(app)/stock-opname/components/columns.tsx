@@ -23,13 +23,13 @@ export interface StockOpnameActionHandlers {
 
 export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<StockOpname>[] => [
   {
-    id: 'medicineNameGroup', // <-- ID UNIK DITAMBAHKAN
+    id: 'medicineNameGroup',
     header: () => <div className="text-left">Nama Obat</div>,
     accessorKey: "medicineName",
     cell: ({ row }) => <div className="text-left font-medium">{row.getValue("medicineName")}</div>,
   },
   {
-      id: 'keadaanBulanLaluGroup', // <-- ID UNIK DITAMBAHKAN
+      id: 'keadaanBulanLaluGroup',
       header: () => <div className="text-center">Keadaan Bulan Lalu</div>,
       columns: [
           { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaluBaik", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaluBaik")}</div> },
@@ -38,7 +38,7 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
       ],
   },
   {
-      id: 'pemasukanGroup', // <-- ID UNIK DITAMBAHKAN
+      id: 'pemasukanGroup',
       header: () => <div className="text-center">Pemasukan</div>,
       columns: [
           { header: () => <div className="text-center">Baik</div>, accessorKey: "pemasukanBaik", cell: ({ row }) => <div className="text-center">{row.getValue("pemasukanBaik")}</div> },
@@ -47,7 +47,7 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
       ],
   },
   {
-      id: 'pengeluaranGroup', // <-- ID UNIK DITAMBAHKAN
+      id: 'pengeluaranGroup',
       header: () => <div className="text-center">Pengeluaran</div>,
       columns: [
           { header: () => <div className="text-center">Baik</div>, accessorKey: "pengeluaranBaik", cell: ({ row }) => <div className="text-center">{row.getValue("pengeluaranBaik")}</div> },
@@ -56,7 +56,7 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
       ],
   },
   {
-      id: 'keadaanBulanLaporanGroup', // <-- ID UNIK DITAMBAHKAN
+      id: 'keadaanBulanLaporanGroup',
       header: () => <div className="text-center">Keadaan Bulan Laporan</div>,
       columns: [
           { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaporanBaik", cell: ({ row }) => <div className="text-center">{row.getValue("keadaanBulanLaporanBaik")}</div> },
@@ -65,22 +65,23 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
       ],
   },
   {
-    id: 'opnameDateGroup', // <-- ID UNIK DITAMBAHKAN
+    id: 'opnameDateGroup',
     header: "Tanggal Catat",
     accessorKey: "opnameDate",
     cell: ({ row }) => {
         const date = row.getValue("opnameDate");
+        // --- PERBAIKAN DI SINI ---
         if (date instanceof Date && !isNaN(date.getTime())) {
-            return <div className="text-center">{format(date, "d LLL yyyy", { locale: id })}</div>;
+            return <div className="text-center">{format(date, "d LLL yyyy", { locale: id })}</div>
         }
-        return <div className="text-center text-red-500">Invalid Date</div>;
+        return <div className="text-center">-</div>;
     }
   },
   {
     id: "actions",
     cell: ({ row }) => {
       const opname = row.original
- 
+
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
