@@ -1,10 +1,3 @@
-/*
-================================================================================
-File: Halaman Laporan (UI) - Versi Perbaikan Final
-Lokasi: src/app/(app)/laporan/page.tsx
-Tujuan: Ganti SELURUH isi file lama Anda dengan kode ini untuk memperbaiki error.
-================================================================================
-*/
 "use client";
 
 import { useEffect, useState } from "react";
@@ -75,6 +68,7 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  // State baru untuk pilihan bulan, tahun, dan tanggal cetak
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [printDate, setPrintDate] = useState<Date | undefined>(new Date());
@@ -95,6 +89,7 @@ export default function ReportPage() {
     setLoading(true);
     setReportData([]);
 
+    // Kalkulasi tanggal mulai dan selesai berdasarkan bulan dan tahun yang dipilih
     const startDate = startOfMonth(new Date(selectedYear, selectedMonth));
     const endDate = endOfMonth(new Date(selectedYear, selectedMonth));
 
@@ -244,16 +239,15 @@ export default function ReportPage() {
     doc.save(`laporan-stock-opname-${format(new Date(), "yyyy-MM-dd")}.pdf`);
   };
   
-  // --- PERBAIKAN DIMULAI DI SINI ---
   const columns: ColumnDef<ReportData>[] = [
     {
-        id: 'medicineNameGroup', // ID Unik
+        id: 'medicineNameGroup',
         header: () => <div className="text-left">Nama Obat</div>,
         accessorKey: "medicineName",
         cell: ({ row }) => <div className="text-left font-medium">{row.getValue("medicineName")}</div>,
     },
     {
-        id: 'keadaanBulanLaluGroup', // ID Unik
+        id: 'keadaanBulanLaluGroup',
         header: () => <div className="text-center">Keadaan Bulan Lalu</div>,
         columns: [
             { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaluBaik" },
@@ -262,7 +256,7 @@ export default function ReportPage() {
         ],
     },
     {
-        id: 'pemasukanGroup', // ID Unik
+        id: 'pemasukanGroup',
         header: () => <div className="text-center">Pemasukan</div>,
         columns: [
             { header: () => <div className="text-center">Baik</div>, accessorKey: "pemasukanBaik" },
@@ -271,7 +265,7 @@ export default function ReportPage() {
         ],
     },
     {
-        id: 'pengeluaranGroup', // ID Unik
+        id: 'pengeluaranGroup',
         header: () => <div className="text-center">Pengeluaran</div>,
         columns: [
             { header: () => <div className="text-center">Baik</div>, accessorKey: "pengeluaranBaik" },
@@ -280,7 +274,7 @@ export default function ReportPage() {
         ],
     },
     {
-        id: 'keadaanBulanLaporanGroup', // ID Unik
+        id: 'keadaanBulanLaporanGroup',
         header: () => <div className="text-center">Keadaan Bulan Laporan</div>,
         columns: [
             { header: () => <div className="text-center">Baik</div>, accessorKey: "keadaanBulanLaporanBaik" },
@@ -289,12 +283,13 @@ export default function ReportPage() {
         ],
     },
     {
-        id: 'expireDateGroup', // ID Unik
+        id: 'expireDateGroup',
         header: "Expire Date",
         accessorKey: "expireDate",
     },
   ];
-  // --- PERBAIKAN SELESAI DI SINI ---
+
+  const years = [2023, 2024, 2025]; // Anda bisa membuat ini lebih dinamis jika perlu
 
   return (
     <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
@@ -329,7 +324,7 @@ export default function ReportPage() {
                         <SelectValue placeholder="Pilih Tahun" />
                     </SelectTrigger>
                     <SelectContent>
-                        {[2023, 2024, 2025].map(year => (
+                        {years.map(year => (
                             <SelectItem key={year} value={String(year)}>{year}</SelectItem>
                         ))}
                     </SelectContent>
