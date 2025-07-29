@@ -38,36 +38,57 @@ export default function StockOpnamePage() {
       const opnamesData: StockOpname[] = [];
       querySnapshot.forEach(doc => {
           const data = doc.data();
-          try {
-              // Coba konversi tanggal. Jika gagal, lewati dokumen ini.
-              const opnameDate = data.opnameDate?.toDate();
-              const expireDate = data.expireDate?.toDate();
+          
+          // --- PERBAIKAN DIMULAI DI SINI ---
+          // Logika defensif untuk memproses data dari Firestore
+          const opnameDate = data.opnameDate && typeof data.opnameDate.toDate === 'function' 
+              ? data.opnameDate.toDate() 
+              : null;
 
-              // Validasi bahwa opnameDate ada dan merupakan tanggal yang valid
-              if (!opnameDate || isNaN(opnameDate.getTime())) {
-                  console.warn(`Dokumen dengan ID ${doc.id} memiliki opnameDate yang tidak valid dan dilewati.`);
-                  return; // Lewati dokumen ini
-              }
-
-              opnamesData.push({
-                  id: doc.id,
-                  ...data,
-                  opnameDate: opnameDate,
-                  expireDate: expireDate && !isNaN(expireDate.getTime()) ? expireDate : undefined,
-              } as StockOpname);
-          } catch (e) {
-              console.error(`Gagal memproses dokumen stock opname dengan ID ${doc.id}:`, e);
+          // Lewati seluruh dokumen jika tanggal pencatatan utamanya tidak valid
+          if (!opnameDate || isNaN(opnameDate.getTime())) {
+              console.warn(`Melewati dokumen ${doc.id} karena opnameDate tidak valid:`, data.opnameDate);
+              return; 
           }
+
+          const expireDate = data.expireDate && typeof data.expireDate.toDate === 'function'
+              ? data.expireDate.toDate()
+              : undefined;
+
+          opnamesData.push({
+              id: doc.id,
+              medicineName: data.medicineName || "Nama Tidak Ditemukan", // Memberi nilai default
+              opnameDate: opnameDate,
+              expireDate: expireDate && !isNaN(expireDate.getTime()) ? expireDate : undefined,
+              // Memberi nilai default untuk semua field lain untuk keamanan
+              jenisObat: data.jenisObat || '',
+              satuan: data.satuan || '',
+              asalBarang: data.asalBarang || '',
+              keadaanBulanLaluBaik: data.keadaanBulanLaluBaik || 0,
+              keadaanBulanLaluRusak: data.keadaanBulanLaluRusak || 0,
+              keadaanBulanLaluJml: data.keadaanBulanLaluJml || 0,
+              pemasukanBaik: data.pemasukanBaik || 0,
+              pemasukanRusak: data.pemasukanRusak || 0,
+              pemasukanJml: data.pemasukanJml || 0,
+              pengeluaranBaik: data.pengeluaranBaik || 0,
+              pengeluaranRusak: data.pengeluaranRusak || 0,
+              pengeluaranJml: data.pengeluaranJml || 0,
+              keadaanBulanLaporanBaik: data.keadaanBulanLaporanBaik || 0,
+              keadaanBulanLaporanRusak: data.keadaanBulanLaporanRusak || 0,
+              keadaanBulanLaporanJml: data.keadaanBulanLaporanJml || 0,
+              keterangan: data.keterangan || '',
+          } as StockOpname);
+          // --- PERBAIKAN SELESAI DI SINI ---
       });
 
       setStockOpnames(opnamesData);
       setLoading(false);
     }, (error) => {
-        console.error("Failed to fetch stock opnames:", error);
+        console.error("Gagal mengambil data stock opname:", error);
         setLoading(false);
         toast({
             title: "Gagal Memuat Data",
-            description: "Tidak dapat mengambil data stock opname. Coba lagi nanti.",
+            description: "Tidak dapat mengambil data. Coba lagi nanti.",
             variant: "destructive",
         })
     });
