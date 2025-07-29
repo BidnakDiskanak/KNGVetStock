@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { MonitoringData } from '@/lib/types'; // Anda perlu menambahkan tipe data ini
+import type { MonitoringData } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DataTable } from './components/data-table'; // Komponen data-table khusus monitoring
+import { DataTable } from './components/data-table';
 import { columns } from './components/columns';
 
 export default function MonitoringPage() {
@@ -18,15 +18,16 @@ export default function MonitoringPage() {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const monitoringData: MonitoringData[] = querySnapshot.docs.map(doc => {
         const docData = doc.data();
+        const expireDate = docData.expireDate ? docData.expireDate.toDate() : null;
         return {
           id: doc.id,
           location: docData.userLocation || 'Lokasi Tidak Diketahui',
-          medicineName: docData.medicineName,
-          jenisObat: docData.jenisObat,
-          satuan: docData.satuan,
-          sisaStok: docData.keadaanBulanLaporanJml,
-          expireDate: docData.expireDate ? docData.expireDate.toDate() : null,
-          keterangan: docData.keterangan,
+          medicineName: docData.medicineName || '',
+          jenisObat: docData.jenisObat || '',
+          satuan: docData.satuan || '',
+          sisaStok: docData.keadaanBulanLaporanJml || 0,
+          expireDate: expireDate && !isNaN(expireDate.getTime()) ? expireDate : null,
+          keterangan: docData.keterangan || '',
         };
       });
       setData(monitoringData);
