@@ -149,7 +149,6 @@ export interface DashboardStats {
         name: string;
         value: number;
     }[];
-    // --- TAMBAHKAN PROPERTI DI BAWAH INI ---
     obatAkanKadaluarsa: {
         medicineName: string;
         expireDate: string;

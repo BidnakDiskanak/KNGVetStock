@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,6 +10,8 @@ import { AlertTriangle, Archive, Box, PackageCheck } from "lucide-react";
 import { useUser } from "@/contexts/UserProvider";
 import { getDashboardStatsAction } from "@/actions/dashboard-actions";
 import type { User, DashboardStats } from "@/lib/types";
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943'];
 
 export default function DashboardPage() {
     const { user } = useUser();
@@ -42,7 +45,7 @@ export default function DashboardPage() {
                     <Skeleton className="h-32 w-full" />
                     <Skeleton className="h-32 w-full" />
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
                     <Skeleton className="h-80 w-full" />
                     <Skeleton className="h-80 w-full" />
                 </div>
@@ -54,6 +57,7 @@ export default function DashboardPage() {
         <div className="space-y-8 p-2 md:p-8">
             <h2 className="text-3xl font-bold tracking-tight">Dashboard {user?.role === 'admin' ? 'Dinas' : user?.location}</h2>
             
+            {/* Kartu Statistik */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -93,8 +97,43 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-                <Card>
+            {/* Tabel dan Grafik */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card className="lg:col-span-1">
+                    <CardHeader>
+                        <CardTitle>Distribusi Stok per Jenis Obat</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {stats?.allMedicineStock && stats.allMedicineStock.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <PieChart>
+                                    <Pie
+                                        data={stats.allMedicineStock}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={false}
+                                        outerRadius={80}
+                                        fill="#8884d8"
+                                        dataKey="value"
+                                        nameKey="name"
+                                        label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                                    >
+                                        {stats.allMedicineStock.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(value, name) => [`${value} unit`, name]} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex h-[300px] items-center justify-center text-center text-muted-foreground">
+                                <p>Tidak ada data untuk ditampilkan di grafik.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+                <Card className="lg:col-span-1">
                     <CardHeader>
                         <CardTitle>Obat dengan Stok Terendah</CardTitle>
                     </CardHeader>
@@ -127,8 +166,11 @@ export default function DashboardPage() {
                         </Table>
                     </CardContent>
                 </Card>
-                {/* --- KARTU BARU UNTUK OBAT AKAN KADALUARSA --- */}
-                <Card>
+            </div>
+            
+            {/* Tabel Obat Akan Kadaluarsa */}
+            <div className="grid grid-cols-1">
+                 <Card>
                     <CardHeader>
                         <CardTitle>Obat Akan Segera Kadaluarsa</CardTitle>
                     </CardHeader>

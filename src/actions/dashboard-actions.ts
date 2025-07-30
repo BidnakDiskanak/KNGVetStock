@@ -58,9 +58,8 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
     const obatStokMenipis = finalData.filter(item => item.keadaanBulanLaporanJml < stokMenipisThreshold);
     const stokMenipis = obatStokMenipis.length;
 
-    // --- LOGIKA BARU UNTUK KADALUARSA ---
     const expiryThreshold = new Date();
-    expiryThreshold.setMonth(expiryThreshold.getMonth() + 1); // Batas waktu 1 bulan dari sekarang
+    expiryThreshold.setMonth(expiryThreshold.getMonth() + 1);
     const akanKadaluarsaItems = finalData.filter(item => 
         item.expireDate && item.expireDate.toDate() < expiryThreshold
     );
@@ -80,7 +79,6 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
             name: item.medicineName,
             value: item.keadaanBulanLaporanJml,
         })),
-        // --- DATA BARU UNTUK DASHBOARD ---
         obatAkanKadaluarsa: akanKadaluarsaItems.map(item => ({
             medicineName: item.medicineName,
             expireDate: format(item.expireDate.toDate(), "d LLL yyyy", { locale: id }),
