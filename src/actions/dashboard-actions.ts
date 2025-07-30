@@ -2,6 +2,8 @@
 
 import { getFirebaseAdminApp } from "@/lib/firebase-admin-app";
 import { getFirestore, Timestamp, Query } from "firebase-admin/firestore";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 import type { User, DashboardStats } from "@/lib/types";
 
 interface ActionResponse {
@@ -22,22 +24,17 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
     
     let q: Query = stockOpnamesRef;
 
-    // --- PERUBAHAN LOGIKA DIMULAI DI SINI ---
-    // Filter data berdasarkan peran pengguna untuk data dashboard mereka masing-masing
     if (user.role === 'admin') {
-        // Admin HANYA melihat data yang mereka masukkan sendiri
-        q = q.where('userRole', '==', 'admin');
+        q = q.where('userRole', '==', 'user');
     } else {
-        // User UPTD HANYA melihat data mereka sendiri
         q = q.where('userId', '==', user.id);
     }
-    // --- PERUBAHAN LOGIKA SELESAI DI SINI ---
 
     const querySnapshot = await q.get();
     const allRecords = querySnapshot.docs.map(doc => doc.data());
 
     if (allRecords.length === 0) {
-        return { success: true, data: { totalObat: 0, totalStok: 0, stokMenipis: 0, akanKadaluarsa: 0, obatStokMenipis: [], allMedicineStock: [] } };
+        return { success: true, data: { totalObat: 0, totalStok: 0, stokMenipis: 0, akanKadaluarsa: 0, obatStokMenipis: [], allMedicineStock: [], obatAkanKadaluarsa: [] } };
     }
 
     const recordsByMedicine: { [key: string]: any[] } = {};
@@ -61,11 +58,13 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
     const obatStokMenipis = finalData.filter(item => item.keadaanBulanLaporanJml < stokMenipisThreshold);
     const stokMenipis = obatStokMenipis.length;
 
+    // --- LOGIKA BARU UNTUK KADALUARSA ---
     const expiryThreshold = new Date();
-    expiryThreshold.setDate(expiryThreshold.getDate() + 30);
-    const akanKadaluarsa = finalData.filter(item => 
+    expiryThreshold.setMonth(expiryThreshold.getMonth() + 1); // Batas waktu 1 bulan dari sekarang
+    const akanKadaluarsaItems = finalData.filter(item => 
         item.expireDate && item.expireDate.toDate() < expiryThreshold
-    ).length;
+    );
+    const akanKadaluarsa = akanKadaluarsaItems.length;
 
     const stats: DashboardStats = {
         totalObat,
@@ -80,6 +79,12 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
         allMedicineStock: finalData.map(item => ({
             name: item.medicineName,
             value: item.keadaanBulanLaporanJml,
+        })),
+        // --- DATA BARU UNTUK DASHBOARD ---
+        obatAkanKadaluarsa: akanKadaluarsaItems.map(item => ({
+            medicineName: item.medicineName,
+            expireDate: format(item.expireDate.toDate(), "d LLL yyyy", { locale: id }),
+            lokasi: item.userLocation || ''
         }))
     };
 

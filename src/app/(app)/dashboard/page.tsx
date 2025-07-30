@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,8 +9,6 @@ import { AlertTriangle, Archive, Box, PackageCheck } from "lucide-react";
 import { useUser } from "@/contexts/UserProvider";
 import { getDashboardStatsAction } from "@/actions/dashboard-actions";
 import type { User, DashboardStats } from "@/lib/types";
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943'];
 
 export default function DashboardPage() {
     const { user } = useUser();
@@ -57,7 +54,6 @@ export default function DashboardPage() {
         <div className="space-y-8 p-2 md:p-8">
             <h2 className="text-3xl font-bold tracking-tight">Dashboard {user?.role === 'admin' ? 'Dinas' : user?.location}</h2>
             
-            {/* Kartu Statistik */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -88,7 +84,7 @@ export default function DashboardPage() {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Obat Akan Kadaluarsa</CardTitle>
+                        <CardTitle className="text-sm font-medium">Akan Kadaluarsa (&lt;1 Bulan)</CardTitle>
                         <PackageCheck className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -97,7 +93,6 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
-            {/* Tabel dan Grafik */}
             <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                     <CardHeader>
@@ -115,7 +110,7 @@ export default function DashboardPage() {
                             <TableBody>
                                 {stats?.obatStokMenipis && stats.obatStokMenipis.length > 0 ? (
                                     stats.obatStokMenipis.slice(0, 5).map((item, index) => (
-                                        <TableRow key={index}>
+                                        <TableRow key={`low-stock-${index}`}>
                                             <TableCell>{item.medicineName}</TableCell>
                                             {user?.role === 'admin' && <TableCell>{item.lokasi}</TableCell>}
                                             <TableCell className="text-right">{item.sisaStok}</TableCell>
@@ -132,38 +127,38 @@ export default function DashboardPage() {
                         </Table>
                     </CardContent>
                 </Card>
+                {/* --- KARTU BARU UNTUK OBAT AKAN KADALUARSA --- */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Distribusi Stok per Jenis Obat</CardTitle>
+                        <CardTitle>Obat Akan Segera Kadaluarsa</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {stats?.allMedicineStock && stats.allMedicineStock.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={300}>
-                                <PieChart>
-                                    <Pie
-                                        data={stats.allMedicineStock}
-                                        cx="50%"
-                                        cy="50%"
-                                        labelLine={false}
-                                        outerRadius={80}
-                                        fill="#8884d8"
-                                        dataKey="value"
-                                        nameKey="name"
-                                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                    >
-                                        {stats.allMedicineStock.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip formatter={(value) => `${value} unit`} />
-                                    <Legend />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="flex h-[300px] items-center justify-center text-center text-muted-foreground">
-                                <p>Tidak ada data untuk ditampilkan di grafik.</p>
-                            </div>
-                        )}
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Nama Obat</TableHead>
+                                    {user?.role === 'admin' && <TableHead>Lokasi</TableHead>}
+                                    <TableHead className="text-right">Tgl. Kadaluarsa</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {stats?.obatAkanKadaluarsa && stats.obatAkanKadaluarsa.length > 0 ? (
+                                    stats.obatAkanKadaluarsa.slice(0, 5).map((item, index) => (
+                                        <TableRow key={`expiring-${index}`}>
+                                            <TableCell>{item.medicineName}</TableCell>
+                                            {user?.role === 'admin' && <TableCell>{item.lokasi}</TableCell>}
+                                            <TableCell className="text-right text-red-500 font-medium">{item.expireDate}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={user?.role === 'admin' ? 3 : 2} className="h-24 text-center">
+                                            Tidak ada obat yang akan segera kadaluarsa.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
                     </CardContent>
                 </Card>
             </div>

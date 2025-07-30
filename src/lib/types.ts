@@ -145,4 +145,14 @@ export interface DashboardStats {
         sisaStok: number;
         lokasi: string;
     }[];
+    allMedicineStock: {
+        name: string;
+        value: number;
+    }[];
+    // --- TAMBAHKAN PROPERTI DI BAWAH INI ---
+    obatAkanKadaluarsa: {
+        medicineName: string;
+        expireDate: string;
+        lokasi: string;
+    }[];
 }

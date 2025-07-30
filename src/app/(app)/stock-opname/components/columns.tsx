@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { StockOpname } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
 export interface StockOpnameActionHandlers {
   onEdit: (opname: StockOpname) => void;
@@ -64,23 +65,32 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
           { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaporanJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.keadaanBulanLaporanJml}</div> },
       ],
   },
+  // --- PERUBAHAN DIMULAI DI SINI ---
   {
-    id: 'opnameDateGroup',
-    header: "Tanggal Catat",
-    accessorKey: "opnameDate",
+    id: 'expireDateGroup',
+    header: "Expire Date",
+    accessorKey: "expireDate",
     cell: ({ row }) => {
-        const date = row.original.opnameDate;
+        const date = row.original.expireDate;
         if (date instanceof Date && !isNaN(date.getTime())) {
-            return <div className="text-center">{format(date, "d LLL yyyy", { locale: id })}</div>
+            const thirtyDaysFromNow = new Date();
+            thirtyDaysFromNow.setMonth(thirtyDaysFromNow.getMonth() + 1);
+            const isExpiringSoon = date < thirtyDaysFromNow;
+            return (
+                <div className={cn("text-center", isExpiringSoon && "text-red-500 font-bold")}>
+                    {format(date, "d LLL yyyy", { locale: id })}
+                </div>
+            );
         }
         return <div className="text-center">-</div>;
     }
   },
+  // --- PERUBAHAN SELESAI DI SINI ---
   {
     id: "actions",
     cell: ({ row }) => {
       const opname = row.original
-
+ 
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
