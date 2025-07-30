@@ -134,3 +134,15 @@ export interface Officials {
 export interface ReportData extends StockOpname {
     // Tipe ini bisa dibiarkan seperti ini
 }
+
+export interface DashboardStats {
+    totalObat: number;
+    totalStok: number;
+    stokMenipis: number;
+    akanKadaluarsa: number;
+    obatStokMenipis: {
+        medicineName: string;
+        sisaStok: number;
+        lokasi: string;
+    }[];
+}
