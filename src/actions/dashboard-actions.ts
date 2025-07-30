@@ -22,12 +22,9 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
     
     let q: Query = stockOpnamesRef;
 
-    // Filter data berdasarkan peran pengguna
     if (user.role === 'admin') {
-        // Admin melihat rekapitulasi dari semua UPTD
         q = q.where('userRole', '==', 'user');
     } else {
-        // User UPTD hanya melihat datanya sendiri
         q = q.where('userId', '==', user.id);
     }
 
@@ -35,10 +32,9 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
     const allRecords = querySnapshot.docs.map(doc => doc.data());
 
     if (allRecords.length === 0) {
-        return { success: true, data: { totalObat: 0, totalStok: 0, stokMenipis: 0, akanKadaluarsa: 0, obatStokMenipis: [] } };
+        return { success: true, data: { totalObat: 0, totalStok: 0, stokMenipis: 0, akanKadaluarsa: 0, obatStokMenipis: [], allMedicineStock: [] } };
     }
 
-    // --- Logika untuk mendapatkan data terbaru per obat ---
     const recordsByMedicine: { [key: string]: any[] } = {};
     for (const record of allRecords) {
         if (!recordsByMedicine[record.medicineName]) {
@@ -53,16 +49,15 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
 
     const finalData = latestRecords.filter(record => record.keadaanBulanLaporanJml > 0);
     
-    // --- Kalkulasi Statistik ---
     const totalObat = finalData.length;
     const totalStok = finalData.reduce((sum, item) => sum + (item.keadaanBulanLaporanJml || 0), 0);
     
-    const stokMenipisThreshold = 10; // Anggap stok menipis jika < 10
+    const stokMenipisThreshold = 10;
     const obatStokMenipis = finalData.filter(item => item.keadaanBulanLaporanJml < stokMenipisThreshold);
     const stokMenipis = obatStokMenipis.length;
 
     const expiryThreshold = new Date();
-    expiryThreshold.setDate(expiryThreshold.getDate() + 30); // Anggap akan kadaluarsa dalam 30 hari
+    expiryThreshold.setDate(expiryThreshold.getDate() + 30);
     const akanKadaluarsa = finalData.filter(item => 
         item.expireDate && item.expireDate.toDate() < expiryThreshold
     ).length;
@@ -76,6 +71,11 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
             medicineName: item.medicineName,
             sisaStok: item.keadaanBulanLaporanJml,
             lokasi: item.userLocation || ''
+        })),
+        // --- PERUBAHAN DI SINI: Data untuk grafik baru ---
+        allMedicineStock: finalData.map(item => ({
+            name: item.medicineName,
+            value: item.keadaanBulanLaporanJml,
         }))
     };
 

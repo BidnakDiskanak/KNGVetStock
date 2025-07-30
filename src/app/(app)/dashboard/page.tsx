@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +10,8 @@ import { AlertTriangle, Archive, Box, PackageCheck } from "lucide-react";
 import { useUser } from "@/contexts/UserProvider";
 import { getDashboardStatsAction } from "@/actions/dashboard-actions";
 import type { User, DashboardStats } from "@/lib/types";
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943'];
 
 export default function DashboardPage() {
     const { user } = useUser();
@@ -29,7 +31,7 @@ export default function DashboardPage() {
         if (user) {
             fetchStats();
         } else {
-            setLoading(false); // Hentikan loading jika user tidak ada
+            setLoading(false);
         }
     }, [user]);
 
@@ -132,20 +134,31 @@ export default function DashboardPage() {
                 </Card>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Grafik Stok Obat Menipis</CardTitle>
+                        <CardTitle>Distribusi Stok per Jenis Obat</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {/* --- PERBAIKAN GRAFIK DI SINI --- */}
-                        {stats?.obatStokMenipis && stats.obatStokMenipis.length > 0 ? (
+                        {stats?.allMedicineStock && stats.allMedicineStock.length > 0 ? (
                             <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={stats.obatStokMenipis}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="medicineName" angle={-45} textAnchor="end" height={80} interval={0} />
-                                    <YAxis />
-                                    <Tooltip />
+                                <PieChart>
+                                    <Pie
+                                        data={stats.allMedicineStock}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={false}
+                                        outerRadius={80}
+                                        fill="#8884d8"
+                                        dataKey="value"
+                                        nameKey="name"
+                                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                    >
+                                        {stats.allMedicineStock.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(value) => `${value} unit`} />
                                     <Legend />
-                                    <Bar dataKey="sisaStok" fill="#8884d8" name="Sisa Stok" />
-                                </BarChart>
+                                </PieChart>
                             </ResponsiveContainer>
                         ) : (
                             <div className="flex h-[300px] items-center justify-center text-center text-muted-foreground">
