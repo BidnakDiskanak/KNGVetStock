@@ -137,7 +137,6 @@ export default function DashboardPage() {
                         <CardTitle>Distribusi Stok per Jenis Obat</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {/* --- PERBAIKAN GRAFIK DI SINI --- */}
                         {stats?.allMedicineStock && stats.allMedicineStock.length > 0 ? (
                             <ResponsiveContainer width="100%" height={300}>
                                 <PieChart>

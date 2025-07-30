@@ -22,11 +22,16 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
     
     let q: Query = stockOpnamesRef;
 
+    // --- PERUBAHAN LOGIKA DIMULAI DI SINI ---
+    // Filter data berdasarkan peran pengguna untuk data dashboard mereka masing-masing
     if (user.role === 'admin') {
-        q = q.where('userRole', '==', 'user');
+        // Admin HANYA melihat data yang mereka masukkan sendiri
+        q = q.where('userRole', '==', 'admin');
     } else {
+        // User UPTD HANYA melihat data mereka sendiri
         q = q.where('userId', '==', user.id);
     }
+    // --- PERUBAHAN LOGIKA SELESAI DI SINI ---
 
     const querySnapshot = await q.get();
     const allRecords = querySnapshot.docs.map(doc => doc.data());
@@ -72,7 +77,6 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
             sisaStok: item.keadaanBulanLaporanJml,
             lokasi: item.userLocation || ''
         })),
-        // --- PERUBAHAN DI SINI: Data untuk grafik baru ---
         allMedicineStock: finalData.map(item => ({
             name: item.medicineName,
             value: item.keadaanBulanLaporanJml,
