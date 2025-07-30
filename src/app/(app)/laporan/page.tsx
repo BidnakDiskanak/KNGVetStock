@@ -43,7 +43,6 @@ export default function ReportPage() {
 
   useEffect(() => {
     async function fetchOfficials() {
-        // --- PERUBAHAN DI SINI: Kirim data user saat mengambil data pejabat ---
         if (user) {
             const result = await getOfficialsAction(user as User);
             if (result.success && result.data) {
@@ -54,7 +53,7 @@ export default function ReportPage() {
         }
     }
     fetchOfficials();
-  }, [user]); // Tambahkan user sebagai dependency
+  }, [user]);
 
   const handleGenerateReport = async () => {
     if (!user) {
@@ -66,7 +65,6 @@ export default function ReportPage() {
 
     const endDate = endOfMonth(new Date(selectedYear, selectedMonth));
 
-    // --- PERUBAHAN DI SINI: Kirim data user saat mengambil data laporan ---
     const result = await getReportDataAction({ endDate }, user as User);
 
     if (result.success && result.data) {
@@ -115,28 +113,30 @@ export default function ReportPage() {
     doc.setFontSize(11);
     doc.text(period, margin, margin + 20);
 
+    // --- PERBAIKAN DIMULAI DI SINI ---
     const head = [
         [
             { content: 'NO', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
             { content: 'JENIS OBAT', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-            { content: 'NAMA OBAT', colSpan: 2, styles: { halign: 'center' } },
+            { content: 'NAMA OBAT', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'SATUAN', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
             { content: 'KEADAAN BULAN LALU', colSpan: 3, styles: { halign: 'center' } },
             { content: 'PEMASUKAN', colSpan: 3, styles: { halign: 'center' } },
-            { content: 'PENGELUaran', colSpan: 3, styles: { halign: 'center' } },
+            { content: 'PENGELUARAN', colSpan: 3, styles: { halign: 'center' } },
             { content: 'KEADAAN S/D BULAN LAPORAN', colSpan: 3, styles: { halign: 'center' } },
             { content: 'EXPIRE DATE', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
             { content: 'ASAL BARANG', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
             { content: 'KETERANGAN', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
         ],
         [
-            { content: 'SATUAN', styles: { halign: 'center' } },
-            { content: '' },
+            // Baris kedua sekarang hanya berisi sub-header untuk kolom yang digabung
             'BAIK', 'RUSAK', 'JML',
             'BAIK', 'RUSAK', 'JML',
             'BAIK', 'RUSAK', 'JML',
             'BAIK', 'RUSAK', 'JML',
         ]
     ];
+    // --- PERBAIKAN SELESAI DI SINI ---
 
     const body = reportData.map((item, index) => [
         index + 1,
