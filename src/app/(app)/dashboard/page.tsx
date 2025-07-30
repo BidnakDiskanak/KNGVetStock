@@ -26,7 +26,11 @@ export default function DashboardPage() {
                 setLoading(false);
             }
         }
-        fetchStats();
+        if (user) {
+            fetchStats();
+        } else {
+            setLoading(false); // Hentikan loading jika user tidak ada
+        }
     }, [user]);
 
     if (loading) {
@@ -107,32 +111,47 @@ export default function DashboardPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {stats?.obatStokMenipis?.slice(0, 5).map((item, index) => (
-                                    <TableRow key={index}>
-                                        <TableCell>{item.medicineName}</TableCell>
-                                        {user?.role === 'admin' && <TableCell>{item.lokasi}</TableCell>}
-                                        <TableCell className="text-right">{item.sisaStok}</TableCell>
+                                {stats?.obatStokMenipis && stats.obatStokMenipis.length > 0 ? (
+                                    stats.obatStokMenipis.slice(0, 5).map((item, index) => (
+                                        <TableRow key={index}>
+                                            <TableCell>{item.medicineName}</TableCell>
+                                            {user?.role === 'admin' && <TableCell>{item.lokasi}</TableCell>}
+                                            <TableCell className="text-right">{item.sisaStok}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={user?.role === 'admin' ? 3 : 2} className="h-24 text-center">
+                                            Tidak ada obat dengan stok menipis.
+                                        </TableCell>
                                     </TableRow>
-                                ))}
+                                )}
                             </TableBody>
                         </Table>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Grafik Stok Obat</CardTitle>
+                        <CardTitle>Grafik Stok Obat Menipis</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={stats?.obatStokMenipis}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="medicineName" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="sisaStok" fill="#8884d8" name="Sisa Stok" />
-                            </BarChart>
-                        </ResponsiveContainer>
+                        {/* --- PERBAIKAN GRAFIK DI SINI --- */}
+                        {stats?.obatStokMenipis && stats.obatStokMenipis.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={stats.obatStokMenipis}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="medicineName" angle={-45} textAnchor="end" height={80} interval={0} />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="sisaStok" fill="#8884d8" name="Sisa Stok" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex h-[300px] items-center justify-center text-center text-muted-foreground">
+                                <p>Tidak ada data untuk ditampilkan di grafik.</p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
