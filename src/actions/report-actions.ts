@@ -2,6 +2,8 @@
 
 import { getFirebaseAdminApp } from "@/lib/firebase-admin-app";
 import { getFirestore, Timestamp, Query } from "firebase-admin/firestore";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 import type { User, ReportData } from "@/lib/types";
 
 interface ActionResponse {
@@ -28,38 +30,31 @@ export async function getReportDataAction({ endDate }: DateRange, user: User): P
 
     const stockOpnamesRef = db.collection("stock-opnames");
     
-    let q: Query = stockOpnamesRef.where('opnameDate', '<=', Timestamp.fromDate(endOfDay));
+    // --- LOGIKA BARU YANG SUDAH DIPERBAIKI ---
+    // 1. Ambil SEMUA catatan hingga akhir periode yang dipilih
+    let q: Query = stockOpnamesRef
+                .where('opnameDate', '<=', Timestamp.fromDate(endOfDay));
 
-    // --- PERUBAHAN LOGIKA FILTER ---
+    // 2. Filter berdasarkan peran pengguna
     if (user.role === 'admin') {
+        // Laporan admin HANYA berisi data yang dimasukkan oleh admin
         q = q.where('userRole', '==', 'admin');
     } else {
+        // Laporan UPTD HANYA berisi data dari UPTD tersebut
         q = q.where('userId', '==', user.id);
     }
 
     const querySnapshot = await q.get();
+    // 3. Langsung ambil semua data tanpa mencari yang terakhir
     const allRecords = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    const recordsByMedicine: { [key: string]: any[] } = {};
-    for (const record of allRecords) {
-        if (!recordsByMedicine[record.medicineName]) {
-            recordsByMedicine[record.medicineName] = [];
-        }
-        recordsByMedicine[record.medicineName].push(record);
-    }
-
-    const latestRecords = Object.values(recordsByMedicine).map(records => {
-        return records.sort((a, b) => b.opnameDate.toDate() - a.opnameDate.toDate())[0];
-    });
-
-    const finalData = latestRecords.filter(record => record.keadaanBulanLaporanJml > 0);
-
-    const data: ReportData[] = finalData.map(docData => {
+    // 4. Format data untuk ditampilkan
+    const data: ReportData[] = allRecords.map(docData => {
         const expireDate = docData.expireDate ? docData.expireDate.toDate() : null;
         return {
             id: docData.id,
-            opnameDate: docData.opnameDate.toDate(), // Kirim sebagai objek Date
-            expireDate: expireDate && !isNaN(expireDate.getTime()) ? expireDate : null, // Kirim sebagai objek Date
+            opnameDate: docData.opnameDate.toDate(),
+            expireDate: expireDate && !isNaN(expireDate.getTime()) ? expireDate : null,
             medicineName: docData.medicineName || '',
             jenisObat: docData.jenisObat || '',
             satuan: docData.satuan || '',
