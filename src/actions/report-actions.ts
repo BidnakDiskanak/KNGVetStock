@@ -30,25 +30,35 @@ export async function getReportDataAction({ endDate }: DateRange, user: User): P
 
     const stockOpnamesRef = db.collection("stock-opnames");
     
-    // --- LOGIKA BARU YANG SUDAH DIPERBAIKI ---
-    // 1. Ambil SEMUA catatan hingga akhir periode yang dipilih
     let q: Query = stockOpnamesRef
                 .where('opnameDate', '<=', Timestamp.fromDate(endOfDay));
 
-    // 2. Filter berdasarkan peran pengguna
     if (user.role === 'admin') {
-        // Laporan admin HANYA berisi data yang dimasukkan oleh admin
         q = q.where('userRole', '==', 'admin');
     } else {
-        // Laporan UPTD HANYA berisi data dari UPTD tersebut
         q = q.where('userId', '==', user.id);
     }
-
+    
     const querySnapshot = await q.get();
-    // 3. Langsung ambil semua data tanpa mencari yang terakhir
     const allRecords = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    // 4. Format data untuk ditampilkan
+    // --- PERUBAHAN LOGIKA DIMULAI DI SINI ---
+    // 1. Lakukan pengurutan data di server sebelum mengirimkannya
+    allRecords.sort((a, b) => {
+        // Urutan pertama: berdasarkan nama obat (abjad, case-insensitive)
+        const nameA = (a.medicineName || '').toLowerCase();
+        const nameB = (b.medicineName || '').toLowerCase();
+        if (nameA < nameB) return -1;
+        if (nameA > nameB) return 1;
+
+        // Urutan kedua: jika nama sama, urutkan berdasarkan tanggal kadaluarsa (yang paling cepat akan di atas)
+        // Anggap data tanpa tanggal kadaluarsa sebagai tanggal yang paling jauh di masa depan
+        const dateA = a.expireDate ? a.expireDate.toDate().getTime() : Infinity; 
+        const dateB = b.expireDate ? b.expireDate.toDate().getTime() : Infinity;
+        return dateA - dateB;
+    });
+    // --- PERUBAHAN LOGIKA SELESAI DI SINI ---
+
     const data: ReportData[] = allRecords.map(docData => {
         const expireDate = docData.expireDate ? docData.expireDate.toDate() : null;
         return {
