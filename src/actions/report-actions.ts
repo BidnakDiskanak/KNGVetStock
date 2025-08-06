@@ -30,36 +30,21 @@ export async function getReportDataAction({ endDate }: DateRange, user: User): P
 
     const stockOpnamesRef = db.collection("stock-opnames");
     
-    let q: Query = stockOpnamesRef.where('opnameDate', '<=', Timestamp.fromDate(endOfDay));
-
     // --- PERUBAHAN LOGIKA DIMULAI DI SINI ---
-    if (user.role === 'admin') {
-        // Laporan admin HANYA berisi data yang dimasukkan oleh admin
-        q = q.where('userRole', '==', 'admin');
-    } else {
-        // Laporan UPTD HANYA berisi data dari UPTD tersebut
+    // 1. Ambil SEMUA catatan hingga akhir periode yang dipilih
+    let q: Query = stockOpnamesRef
+                .where('opnameDate', '<=', Timestamp.fromDate(endOfDay));
+
+    // 2. Filter berdasarkan pengguna jika bukan admin
+    if (user.role !== 'admin') {
         q = q.where('userId', '==', user.id);
     }
-    // --- PERUBAHAN LOGIKA SELESAI DI SINI ---
-
+    
     const querySnapshot = await q.get();
     const allRecords = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    const recordsByMedicine: { [key: string]: any[] } = {};
-    for (const record of allRecords) {
-        if (!recordsByMedicine[record.medicineName]) {
-            recordsByMedicine[record.medicineName] = [];
-        }
-        recordsByMedicine[record.medicineName].push(record);
-    }
-
-    const latestRecords = Object.values(recordsByMedicine).map(records => {
-        return records.sort((a, b) => b.opnameDate.toDate() - a.opnameDate.toDate())[0];
-    });
-
-    const finalData = latestRecords.filter(record => record.keadaanBulanLaporanJml > 0);
-
-    const data: ReportData[] = finalData.map(docData => {
+    // 3. Langsung format dan kembalikan semua data yang ditemukan
+    const data: ReportData[] = allRecords.map(docData => {
         return {
             id: docData.id,
             opnameDate: format(docData.opnameDate.toDate(), "d LLL yyyy", { locale: id }),
@@ -83,6 +68,7 @@ export async function getReportDataAction({ endDate }: DateRange, user: User): P
             keterangan: docData.keterangan || '',
         };
     });
+    // --- PERUBAHAN LOGIKA SELESAI DI SINI ---
 
     return { success: true, data };
   } catch (error: any) {
