@@ -113,7 +113,6 @@ export default function ReportPage() {
     doc.setFontSize(11);
     doc.text(period, margin, margin + 20);
 
-    // --- PERBAIKAN DIMULAI DI SINI ---
     const head = [
         [
             { content: 'NO', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
@@ -129,14 +128,12 @@ export default function ReportPage() {
             { content: 'KETERANGAN', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
         ],
         [
-            // Baris kedua sekarang hanya berisi sub-header untuk kolom yang digabung
             'BAIK', 'RUSAK', 'JML',
             'BAIK', 'RUSAK', 'JML',
             'BAIK', 'RUSAK', 'JML',
             'BAIK', 'RUSAK', 'JML',
         ]
     ];
-    // --- PERBAIKAN SELESAI DI SINI ---
 
     const body = reportData.map((item, index) => [
         index + 1,
@@ -147,7 +144,7 @@ export default function ReportPage() {
         item.pemasukanBaik, item.pemasukanRusak, item.pemasukanJml,
         item.pengeluaranBaik, item.pengeluaranRusak, item.pengeluaranJml,
         item.keadaanBulanLaporanBaik, item.keadaanBulanLaporanRusak, item.keadaanBulanLaporanJml,
-        item.expireDate || '',
+        item.expireDate ? format(item.expireDate, "d LLL yyyy", { locale: id }) : '',
         item.asalBarang || '',
         item.keterangan || '',
     ]);
@@ -255,7 +252,14 @@ export default function ReportPage() {
         id: 'expireDateGroup',
         header: "Expire Date",
         accessorKey: "expireDate",
-        cell: ({ row }) => <div className="text-center">{row.original.expireDate}</div>,
+        // --- PERBAIKAN FORMAT TANGGAL ---
+        cell: ({ row }) => {
+            const date = row.original.expireDate;
+            if (date instanceof Date && !isNaN(date.getTime())) {
+                return <div className="text-center">{format(date, "d LLL yyyy", { locale: id })}</div>;
+            }
+            return <div className="text-center">-</div>;
+        }
     },
   ];
 

@@ -131,8 +131,28 @@ export interface Officials {
     nipKepalaUPTD?: string;
 }
 
-export interface ReportData extends StockOpname {
-    // Tipe ini bisa dibiarkan seperti ini
+// Pastikan tipe data ReportData seperti di bawah ini
+export interface ReportData {
+  id: string;
+  opnameDate: Date; // Diubah dari string
+  medicineName: string;
+  jenisObat?: string;
+  satuan?: string;
+  expireDate?: Date | null; // Diubah dari string
+  asalBarang?: string;
+  keadaanBulanLaluBaik: number;
+  keadaanBulanLaluRusak: number;
+  keadaanBulanLaluJml: number;
+  pemasukanBaik: number;
+  pemasukanRusak: number;
+  pemasukanJml: number;
+  pengeluaranBaik: number;
+  pengeluaranRusak: number;
+  pengeluaranJml: number;
+  keadaanBulanLaporanBaik: number;
+  keadaanBulanLaporanRusak: number;
+  keadaanBulanLaporanJml: number;
+  keterangan?: string;
 }
 
 export interface DashboardStats {

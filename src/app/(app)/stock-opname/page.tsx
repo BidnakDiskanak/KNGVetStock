@@ -35,15 +35,11 @@ export default function StockOpnamePage() {
     let q;
     const baseQuery = collection(db, "stock-opnames");
 
-    // --- PERUBAHAN LOGIKA DIMULAI DI SINI ---
-    if (user.role === 'admin') {
-        // Admin HANYA melihat data yang dimasukkan oleh admin lain
-        q = query(baseQuery, where("userRole", "==", "admin"), orderBy("opnameDate", "desc"));
-    } else {
-        // User UPTD HANYA melihat data mereka sendiri
+    if (user.role !== 'admin') {
         q = query(baseQuery, where("userId", "==", user.id), orderBy("opnameDate", "desc"));
+    } else {
+        q = query(baseQuery, where("userRole", "==", "admin"), orderBy("opnameDate", "desc"));
     }
-    // --- PERUBAHAN LOGIKA SELESAI DI SINI ---
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const opnamesData: StockOpname[] = [];
