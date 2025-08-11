@@ -14,6 +14,7 @@ interface ActionResponse {
 
 export async function getDashboardStatsAction(user: User): Promise<ActionResponse> {
   try {
+    console.log("--- Memulai getDashboardStatsAction ---");
     if (!user) {
         throw new Error("User tidak terautentikasi.");
     }
@@ -25,21 +26,22 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
     let q: Query = stockOpnamesRef;
 
     if (user.role === 'admin') {
+        console.log("Mode Admin: Memfilter data dengan userRole == 'admin'");
         q = q.where('userRole', '==', 'admin');
     } else {
+        console.log(`Mode User UPTD: Memfilter data dengan userId == ${user.id}`);
         q = q.where('userId', '==', user.id);
     }
 
     const querySnapshot = await q.get();
     const allRecords = querySnapshot.docs.map(doc => doc.data());
+    console.log(`Ditemukan ${allRecords.length} total catatan dari Firestore.`);
 
     if (allRecords.length === 0) {
+        console.log("Tidak ada catatan, mengembalikan statistik kosong.");
         return { success: true, data: { totalObat: 0, totalStok: 0, stokMenipis: 0, akanKadaluarsa: 0, obatStokMenipis: [], allMedicineStock: [], obatAkanKadaluarsa: [] } };
     }
 
-    // --- LOGIKA BARU BERBASIS BATCH ---
-
-    // 1. Kelompokkan catatan berdasarkan batch unik (nama obat + tanggal kadaluarsa)
     const recordsByBatch: { [key: string]: any[] } = {};
     for (const record of allRecords) {
         const expireDateString = record.expireDate ? record.expireDate.toDate().toISOString() : 'no-expiry';
@@ -50,16 +52,15 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
         recordsByBatch[key].push(record);
     }
 
-    // 2. Untuk setiap batch, cari catatan terakhirnya
     const latestBatchRecords = Object.values(recordsByBatch).map(records => {
         return records.sort((a, b) => b.opnameDate.toDate() - a.opnameDate.toDate())[0];
     });
 
-    // 3. Filter batch yang stoknya sudah habis
     const finalData = latestBatchRecords.filter(record => record.keadaanBulanLaporanJml > 0);
+    console.log(`Ditemukan ${finalData.length} batch obat yang aktif (stok > 0).`);
     
-    // 4. Lakukan kalkulasi berdasarkan data batch yang aktif
     const totalStok = finalData.reduce((sum, item) => sum + (item.keadaanBulanLaporanJml || 0), 0);
+    console.log(`Kalkulasi Total Stok: ${totalStok}`);
     
     const uniqueMedicineNames = new Set(finalData.map(item => item.medicineName));
     const totalObat = uniqueMedicineNames.size;
@@ -70,8 +71,8 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
         item.expireDate && item.expireDate.toDate() < expiryThreshold
     );
     const akanKadaluarsa = akanKadaluarsaItems.reduce((sum, item) => sum + (item.keadaanBulanLaporanJml || 0), 0);
+    console.log(`Kalkulasi Akan Kadaluarsa (jumlah unit): ${akanKadaluarsa}`);
 
-    // Agregasi stok per nama obat untuk data stok menipis dan grafik
     const stockByName: { [key: string]: { total: number, lokasi: string } } = {};
     finalData.forEach(item => {
         if (!stockByName[item.medicineName]) {
@@ -80,7 +81,7 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
         stockByName[item.medicineName].total += item.keadaanBulanLaporanJml;
     });
 
-    const stokMenipisThreshold = 50; // Anda bisa sesuaikan ambang batas ini
+    const stokMenipisThreshold = 50;
     const obatStokMenipis = Object.entries(stockByName)
         .filter(([name, data]) => data.total < stokMenipisThreshold)
         .map(([medicineName, data]) => ({ 
@@ -108,10 +109,11 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
             lokasi: item.userLocation || ''
         }))
     };
-
+    
+    console.log("--- Selesai getDashboardStatsAction, hasil akhir:", stats);
     return { success: true, data: stats };
   } catch (error: any) {
-    console.error("Error getting dashboard stats:", error);
+    console.error("--- ERROR di getDashboardStatsAction ---:", error);
     return { success: false, error: "Gagal mengambil data dashboard." };
   }
 }
