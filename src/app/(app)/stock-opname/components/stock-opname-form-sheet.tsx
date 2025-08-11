@@ -28,8 +28,8 @@ const formSchema = z.object({
   satuan: z.string().optional(),
   expireDate: z.date().optional(),
   asalBarang: z.string().optional(),
-  keadaanBulanLaluBaik: z.coerce.number().min(0).default(0).optional(),
-  keadaanBulanLaluRusak: z.coerce.number().min(0).default(0).optional(),
+  keadaanBulanLaluBaik: z.coerce.number().min(0).default(0),
+  keadaanBulanLaluRusak: z.coerce.number().min(0).default(0),
   pemasukanBaik: z.coerce.number().min(0).default(0),
   pemasukanRusak: z.coerce.number().min(0).default(0),
   pengeluaranBaik: z.coerce.number().min(0).default(0),
@@ -127,9 +127,7 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
                         <Separator />
                         <div>
                             <h3 className="text-lg font-medium">Keadaan Bulan Lalu</h3>
-                            <FormDescription>
-                                Hanya diisi untuk entri pertama kali. Untuk entri selanjutnya, ini akan diisi otomatis.
-                            </FormDescription>
+                            {/* --- DESKRIPSI DIHAPUS DARI SINI --- */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                                 <FormField control={form.control} name="keadaanBulanLaluBaik" render={({ field }) => (<FormItem><FormLabel>Baik</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <FormField control={form.control} name="keadaanBulanLaluRusak" render={({ field }) => (<FormItem><FormLabel>Rusak</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)}/>

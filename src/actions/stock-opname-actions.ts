@@ -17,8 +17,8 @@ const formSchema = z.object({
   satuan: z.string().optional(),
   expireDate: z.date().optional(),
   asalBarang: z.string().optional(),
-  keadaanBulanLaluBaik: z.coerce.number().min(0).default(0).optional(),
-  keadaanBulanLaluRusak: z.coerce.number().min(0).default(0).optional(),
+  keadaanBulanLaluBaik: z.coerce.number().min(0).default(0),
+  keadaanBulanLaluRusak: z.coerce.number().min(0).default(0),
   pemasukanBaik: z.coerce.number().min(0).default(0),
   pemasukanRusak: z.coerce.number().min(0).default(0),
   pengeluaranBaik: z.coerce.number().min(0).default(0),
@@ -35,25 +35,12 @@ async function handleStockOpname(formData: StockOpnameData, user: User, existing
     const db = getFirestore(app);
     const stockOpnamesRef = db.collection("stock-opnames");
 
-    let keadaanBulanLaluBaik = validatedData.keadaanBulanLaluBaik || 0;
-    let keadaanBulanLaluRusak = validatedData.keadaanBulanLaluRusak || 0;
-
-    if (!existingId) {
-        const lastEntryQuery = stockOpnamesRef
-            .where('medicineName', '==', validatedData.medicineName)
-            .where('userId', '==', user.id)
-            .orderBy('opnameDate', 'desc')
-            .limit(1);
-            
-        const lastEntrySnapshot = await lastEntryQuery.get();
-
-        if (!lastEntrySnapshot.empty) {
-            const lastEntryData = lastEntrySnapshot.docs[0].data();
-            keadaanBulanLaluBaik = lastEntryData.keadaanBulanLaporanBaik;
-            keadaanBulanLaluRusak = lastEntryData.keadaanBulanLaporanRusak;
-        }
-    }
+    // --- LOGIKA KALKULASI OTOMATIS DIHAPUS ---
+    // Sekarang semua data diambil langsung dari formulir
+    const keadaanBulanLaluBaik = validatedData.keadaanBulanLaluBaik;
+    const keadaanBulanLaluRusak = validatedData.keadaanBulanLaluRusak;
     
+    // Lakukan kalkulasi berdasarkan data yang diinput manual
     const keadaanBulanLaluJml = keadaanBulanLaluBaik + keadaanBulanLaluRusak;
     const pemasukanJml = validatedData.pemasukanBaik + validatedData.pemasukanRusak;
     const pengeluaranJml = validatedData.pengeluaranBaik + validatedData.pengeluaranRusak;
@@ -61,35 +48,18 @@ async function handleStockOpname(formData: StockOpnameData, user: User, existing
     const keadaanBulanLaporanRusak = keadaanBulanLaluRusak + validatedData.pemasukanRusak - validatedData.pengeluaranRusak;
     const keadaanBulanLaporanJml = keadaanBulanLaporanBaik + keadaanBulanLaporanRusak;
 
-    // --- PERBAIKAN LOGIKA PENYIMPANAN ---
-    // Membangun objek secara eksplisit untuk menghindari penimpaan data yang tidak diinginkan
     const dataToSave = {
-      // Ambil data baru dari formulir
+      ...validatedData,
       opnameDate: Timestamp.fromDate(validatedData.opnameDate),
-      medicineName: validatedData.medicineName,
-      jenisObat: validatedData.jenisObat,
-      satuan: validatedData.satuan,
       expireDate: validatedData.expireDate ? Timestamp.fromDate(validatedData.expireDate) : null,
-      asalBarang: validatedData.asalBarang,
-      pemasukanBaik: validatedData.pemasukanBaik,
-      pemasukanRusak: validatedData.pemasukanRusak,
-      pengeluaranBaik: validatedData.pengeluaranBaik,
-      pengeluaranRusak: validatedData.pengeluaranRusak,
-      keterangan: validatedData.keterangan,
-      
-      // Gunakan data 'keadaanBulanLalu' yang sudah dikalkulasi
       keadaanBulanLaluBaik,
       keadaanBulanLaluRusak,
-
-      // Tambahkan hasil kalkulasi lainnya
       keadaanBulanLaluJml,
       pemasukanJml,
       pengeluaranJml,
       keadaanBulanLaporanBaik,
       keadaanBulanLaporanRusak,
       keadaanBulanLaporanJml,
-      
-      // Tambahkan metadata
       createdAt: Timestamp.now(),
       userId: user.id,
       userLocation: user.location,
