@@ -38,19 +38,23 @@ async function handleStockOpname(formData: StockOpnameData, user: User, existing
     let keadaanBulanLaluBaik = validatedData.keadaanBulanLaluBaik || 0;
     let keadaanBulanLaluRusak = validatedData.keadaanBulanLaluRusak || 0;
 
-    const lastEntryQuery = stockOpnamesRef
-        .where('medicineName', '==', validatedData.medicineName)
-        .orderBy('opnameDate', 'desc')
-        .limit(1);
-        
-    const lastEntrySnapshot = await lastEntryQuery.get();
+    // --- LOGIKA KALKULASI OTOMATIS ---
+    if (!existingId) { // Hanya jalankan kalkulasi otomatis saat membuat data BARU
+        const lastEntryQuery = stockOpnamesRef
+            .where('medicineName', '==', validatedData.medicineName)
+            .where('userId', '==', user.id) // Pastikan hanya mencari data milik user yang sama
+            .orderBy('opnameDate', 'desc')
+            .limit(1);
+            
+        const lastEntrySnapshot = await lastEntryQuery.get();
 
-    if (!lastEntrySnapshot.empty) {
-        const lastEntryData = lastEntrySnapshot.docs[0].data();
-        keadaanBulanLaluBaik = lastEntryData.keadaanBulanLaporanBaik;
-        keadaanBulanLaluRusak = lastEntryData.keadaanBulanLaporanRusak;
+        if (!lastEntrySnapshot.empty) {
+            const lastEntryData = lastEntrySnapshot.docs[0].data();
+            keadaanBulanLaluBaik = lastEntryData.keadaanBulanLaporanBaik;
+            keadaanBulanLaluRusak = lastEntryData.keadaanBulanLaporanRusak;
+        }
     }
-
+    
     const keadaanBulanLaluJml = keadaanBulanLaluBaik + keadaanBulanLaluRusak;
     const pemasukanJml = validatedData.pemasukanBaik + validatedData.pemasukanRusak;
     const pengeluaranJml = validatedData.pengeluaranBaik + validatedData.pengeluaranRusak;
@@ -58,12 +62,16 @@ async function handleStockOpname(formData: StockOpnameData, user: User, existing
     const keadaanBulanLaporanRusak = keadaanBulanLaluRusak + validatedData.pemasukanRusak - validatedData.pengeluaranRusak;
     const keadaanBulanLaporanJml = keadaanBulanLaporanBaik + keadaanBulanLaporanRusak;
 
+    // --- PERBAIKAN LOGIKA PENYIMPANAN ---
     const dataToSave = {
+      // Ambil data dari formulir
       ...validatedData,
-      opnameDate: Timestamp.fromDate(validatedData.opnameDate),
-      expireDate: validatedData.expireDate ? Timestamp.fromDate(validatedData.expireDate) : null,
+      // Timpa data 'keadaanBulanLalu' dengan hasil kalkulasi
       keadaanBulanLaluBaik,
       keadaanBulanLaluRusak,
+      // Tambahkan hasil kalkulasi lainnya
+      opnameDate: Timestamp.fromDate(validatedData.opnameDate),
+      expireDate: validatedData.expireDate ? Timestamp.fromDate(validatedData.expireDate) : null,
       keadaanBulanLaluJml,
       pemasukanJml,
       pengeluaranJml,
@@ -71,11 +79,10 @@ async function handleStockOpname(formData: StockOpnameData, user: User, existing
       keadaanBulanLaporanRusak,
       keadaanBulanLaporanJml,
       createdAt: Timestamp.now(),
-      // --- PERUBAHAN DI SINI: Simpan info pengguna LENGKAP ---
       userId: user.id,
       userLocation: user.location,
       userName: user.name,
-      userRole: user.role, // <-- TAMBAHKAN INI
+      userRole: user.role,
     };
     
     if (existingId) {
