@@ -38,11 +38,10 @@ async function handleStockOpname(formData: StockOpnameData, user: User, existing
     let keadaanBulanLaluBaik = validatedData.keadaanBulanLaluBaik || 0;
     let keadaanBulanLaluRusak = validatedData.keadaanBulanLaluRusak || 0;
 
-    // --- LOGIKA KALKULASI OTOMATIS ---
-    if (!existingId) { // Hanya jalankan kalkulasi otomatis saat membuat data BARU
+    if (!existingId) {
         const lastEntryQuery = stockOpnamesRef
             .where('medicineName', '==', validatedData.medicineName)
-            .where('userId', '==', user.id) // Pastikan hanya mencari data milik user yang sama
+            .where('userId', '==', user.id)
             .orderBy('opnameDate', 'desc')
             .limit(1);
             
@@ -63,8 +62,9 @@ async function handleStockOpname(formData: StockOpnameData, user: User, existing
     const keadaanBulanLaporanJml = keadaanBulanLaporanBaik + keadaanBulanLaporanRusak;
 
     // --- PERBAIKAN LOGIKA PENYIMPANAN ---
+    // Membangun objek secara eksplisit untuk menghindari penimpaan data yang tidak diinginkan
     const dataToSave = {
-      // Ambil data dari formulir
+      // Ambil data baru dari formulir
       opnameDate: Timestamp.fromDate(validatedData.opnameDate),
       medicineName: validatedData.medicineName,
       jenisObat: validatedData.jenisObat,
@@ -77,7 +77,7 @@ async function handleStockOpname(formData: StockOpnameData, user: User, existing
       pengeluaranRusak: validatedData.pengeluaranRusak,
       keterangan: validatedData.keterangan,
       
-      // Timpa data 'keadaanBulanLalu' dengan hasil kalkulasi
+      // Gunakan data 'keadaanBulanLalu' yang sudah dikalkulasi
       keadaanBulanLaluBaik,
       keadaanBulanLaluRusak,
 
