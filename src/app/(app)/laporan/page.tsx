@@ -252,7 +252,6 @@ export default function ReportPage() {
         id: 'expireDateGroup',
         header: "Expire Date",
         accessorKey: "expireDate",
-        // --- PERBAIKAN FORMAT TANGGAL ---
         cell: ({ row }) => {
             const date = row.original.expireDate;
             if (date instanceof Date && !isNaN(date.getTime())) {
@@ -317,7 +316,7 @@ export default function ReportPage() {
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={printDate} onSelect={setPrintDate} initialFocus />
+                    <Calendar mode="single" selected={printDate} onSelect={setPrintDate} captionLayout="dropdown-buttons" fromYear={2020} toYear={2030} initialFocus />
                 </PopoverContent>
             </Popover>
         </div>
