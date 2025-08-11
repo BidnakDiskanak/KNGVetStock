@@ -65,19 +65,31 @@ async function handleStockOpname(formData: StockOpnameData, user: User, existing
     // --- PERBAIKAN LOGIKA PENYIMPANAN ---
     const dataToSave = {
       // Ambil data dari formulir
-      ...validatedData,
+      opnameDate: Timestamp.fromDate(validatedData.opnameDate),
+      medicineName: validatedData.medicineName,
+      jenisObat: validatedData.jenisObat,
+      satuan: validatedData.satuan,
+      expireDate: validatedData.expireDate ? Timestamp.fromDate(validatedData.expireDate) : null,
+      asalBarang: validatedData.asalBarang,
+      pemasukanBaik: validatedData.pemasukanBaik,
+      pemasukanRusak: validatedData.pemasukanRusak,
+      pengeluaranBaik: validatedData.pengeluaranBaik,
+      pengeluaranRusak: validatedData.pengeluaranRusak,
+      keterangan: validatedData.keterangan,
+      
       // Timpa data 'keadaanBulanLalu' dengan hasil kalkulasi
       keadaanBulanLaluBaik,
       keadaanBulanLaluRusak,
+
       // Tambahkan hasil kalkulasi lainnya
-      opnameDate: Timestamp.fromDate(validatedData.opnameDate),
-      expireDate: validatedData.expireDate ? Timestamp.fromDate(validatedData.expireDate) : null,
       keadaanBulanLaluJml,
       pemasukanJml,
       pengeluaranJml,
       keadaanBulanLaporanBaik,
       keadaanBulanLaporanRusak,
       keadaanBulanLaporanJml,
+      
+      // Tambahkan metadata
       createdAt: Timestamp.now(),
       userId: user.id,
       userLocation: user.location,
