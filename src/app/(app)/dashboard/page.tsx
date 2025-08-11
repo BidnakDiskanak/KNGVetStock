@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,8 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, Archive, Box, PackageCheck } from "lucide-react";
 
 import { useUser } from "@/contexts/UserProvider";
-import { getDashboardStatsAction } from "@/actions/dashboard-actions";
-import type { User, DashboardStats } from "@/lib/types";
+import type { User, DashboardStats, StockOpname } from "@/lib/types";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943'];
 
@@ -19,20 +22,103 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        async function fetchStats() {
-            if (user) {
-                const result = await getDashboardStatsAction(user as User);
-                if (result.success && result.data) {
-                    setStats(result.data);
-                }
-                setLoading(false);
-            }
-        }
-        if (user) {
-            fetchStats();
-        } else {
+        if (!user) {
             setLoading(false);
+            return;
         }
+
+        let q;
+        const stockOpnamesRef = collection(db, "stock-opnames");
+
+        if (user.role === 'admin') {
+            q = query(stockOpnamesRef, where('userRole', '==', 'admin'));
+        } else {
+            q = query(stockOpnamesRef, where('userId', '==', user.id));
+        }
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const allRecords: StockOpname[] = [];
+            querySnapshot.forEach(doc => {
+                const data = doc.data();
+                const opnameDate = data.opnameDate?.toDate();
+                const expireDate = data.expireDate?.toDate();
+
+                if (opnameDate && !isNaN(opnameDate.getTime())) {
+                    allRecords.push({
+                        id: doc.id,
+                        ...data,
+                        opnameDate,
+                        expireDate: expireDate && !isNaN(expireDate.getTime()) ? expireDate : undefined,
+                    } as StockOpname);
+                }
+            });
+
+            if (allRecords.length === 0) {
+                setStats({ totalObat: 0, totalStok: 0, stokMenipis: 0, akanKadaluarsa: 0, obatStokMenipis: [], allMedicineStock: [], obatAkanKadaluarsa: [] });
+                setLoading(false);
+                return;
+            }
+
+            const recordsByMedicine: { [key: string]: StockOpname[] } = {};
+            for (const record of allRecords) {
+                if (!recordsByMedicine[record.medicineName]) {
+                    recordsByMedicine[record.medicineName] = [];
+                }
+                recordsByMedicine[record.medicineName].push(record);
+            }
+
+            const latestRecords = Object.values(recordsByMedicine).map(records => {
+                return records.sort((a, b) => b.opnameDate.getTime() - a.opnameDate.getTime())[0];
+            });
+
+            const finalData = latestRecords.filter(record => record.keadaanBulanLaporanJml > 0);
+            
+            const totalObat = finalData.length;
+            const totalStok = finalData.reduce((sum, item) => sum + (item.keadaanBulanLaporanJml || 0), 0);
+            
+            const stokMenipisThreshold = 10;
+            const obatStokMenipis = finalData.filter(item => item.keadaanBulanLaporanJml < stokMenipisThreshold);
+            const stokMenipisCount = obatStokMenipis.length;
+
+            const expiryThreshold = new Date();
+            expiryThreshold.setMonth(expiryThreshold.getMonth() + 1);
+            const akanKadaluarsaItems = finalData.filter(item => 
+                item.expireDate && item.expireDate < expiryThreshold
+            );
+            const akanKadaluarsaCount = akanKadaluarsaItems.length;
+
+            const newStats: DashboardStats = {
+                totalObat,
+                totalStok,
+                stokMenipis: stokMenipisCount,
+                akanKadaluarsa: akanKadaluarsaCount,
+                obatStokMenipis: obatStokMenipis.map(item => ({
+                    medicineName: item.medicineName,
+                    sisaStok: item.keadaanBulanLaporanJml,
+                    lokasi: item.userLocation || ''
+                })),
+                allMedicineStock: finalData.map(item => ({
+                    name: item.medicineName,
+                    value: item.keadaanBulanLaporanJml,
+                })),
+                obatAkanKadaluarsa: akanKadaluarsaItems.map(item => ({
+                    medicineName: item.medicineName,
+                    expireDate: format(item.expireDate!, "d LLL yyyy", { locale: id }),
+                    lokasi: item.userLocation || ''
+                }))
+            };
+            
+            setStats(newStats);
+            setLoading(false);
+
+        }, (error) => {
+            console.error("Gagal mengambil data dashboard secara real-time:", error);
+            setLoading(false);
+        });
+
+        // Membersihkan listener saat komponen dilepas
+        return () => unsubscribe();
+
     }, [user]);
 
     if (loading) {
@@ -57,7 +143,6 @@ export default function DashboardPage() {
         <div className="space-y-8 p-2 md:p-8">
             <h2 className="text-3xl font-bold tracking-tight">Dashboard {user?.role === 'admin' ? 'Dinas' : user?.location}</h2>
             
-            {/* Kartu Statistik */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -97,7 +182,6 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
-            {/* Tabel dan Grafik */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <Card className="lg:col-span-1">
                     <CardHeader>
@@ -168,7 +252,6 @@ export default function DashboardPage() {
                 </Card>
             </div>
             
-            {/* Tabel Obat Akan Kadaluarsa */}
             <div className="grid grid-cols-1">
                  <Card>
                     <CardHeader>
