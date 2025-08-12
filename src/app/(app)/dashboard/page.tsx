@@ -8,10 +8,10 @@ import { useUser } from '@/contexts/UserProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // --- PERBAIKAN PATH IMPOR ---
-// Mencoba path relatif yang berbeda. Pastikan folder 'actions' berada di 'src/app/actions'.
-import { getDashboardStatsAction } from '../../actions/dashboard-action';
+// Path untuk 'actions' telah diperbaiki.
+import { getDashboardStatsAction } from '../../../actions/dashboard-action';
 
-// Pastikan nama folder dan file di bawah ini sama persis (termasuk huruf besar/kecil).
+// Pastikan nama folder dan file di bawah ini sama persis (termasuk huruf besar/kecil) dengan yang ada di repositori Anda.
 import { DataTable } from './components/data-table-low-stock';
 import { columns as lowStockColumns } from './components/columns-low-stock';
 import { columns as expiringColumns } from './components/columns-expiring';
@@ -92,7 +92,7 @@ export default function DashboardPage() {
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.akanKadaluarsa.toLocaleString('id-ID')}</div>
                         <p className="text-xs text-muted-foreground">Jumlah unit obat akan ED</p>
-                    </CardContent>
+                    </C</CardContent>
                 </Card>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
