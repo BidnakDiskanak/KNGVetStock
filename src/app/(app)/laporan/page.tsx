@@ -407,10 +407,11 @@ export default function ReportPage() {
     );
   };
 
+  // --- PERBAIKAN DI SINI ---
+  // Mengubah definisi kolom "Nama Obat" agar terhubung dengan filter
   const columns: ColumnDef<ReportData>[] = [
     {
-      id: "medicineNameGroup",
-      accessorKey: "medicineName",
+      accessorKey: "medicineName", // Kunci untuk filter
       header: () => <div className="text-left">Nama Obat</div>,
       cell: ({ row }) => (
         <div className="text-left font-medium">
