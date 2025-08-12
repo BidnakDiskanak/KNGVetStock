@@ -32,7 +32,7 @@ import { DataTableViewOptions } from "./data-table-view-options"
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
-  onAdd?: () => void; // Make onAdd optional
+  onAdd?: () => void;
   filterColumn?: string;
 }
 
@@ -40,7 +40,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   onAdd,
-  filterColumn = "name", // Default filter column to 'name'
+  filterColumn, // Filter column is now received as a prop
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -73,27 +73,31 @@ export function DataTable<TData, TValue>({
   
   return (
     <div className="space-y-4">
-       <div className="flex items-center justify-between">
-        <div className="flex flex-1 items-center space-x-2">
-            <Input
-            placeholder={`Cari berdasarkan ${filterColumn === 'name' ? 'nama obat' : 'lokasi'}...`}
-            value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""}
-            onChange={(event) => {
-                table.getColumn(filterColumn)?.setFilterValue(event.target.value)
-            }}
-            className="h-9 max-w-sm"
-            />
-        </div>
-        <div className="flex items-center space-x-2">
-            <DataTableViewOptions table={table} />
-            {onAdd && (
-                <Button size="sm" className="h-9" onClick={onAdd}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Tambah Data
-                </Button>
+        <div className="flex items-center justify-between">
+         <div className="flex flex-1 items-center space-x-2">
+            {/* --- PERUBAHAN DI SINI --- */}
+            {/* Menampilkan input filter hanya jika filterColumn disediakan */}
+            {filterColumn && (
+                <Input
+                placeholder={`Cari nama obat...`}
+                value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""}
+                onChange={(event) => {
+                    table.getColumn(filterColumn)?.setFilterValue(event.target.value)
+                }}
+                className="h-9 max-w-sm"
+                />
             )}
-        </div>
-      </div>
+         </div>
+         <div className="flex items-center space-x-2">
+             <DataTableViewOptions table={table} />
+             {onAdd && (
+                 <Button size="sm" className="h-9" onClick={onAdd}>
+                     <PlusCircle className="mr-2 h-4 w-4" />
+                     Tambah Data
+                 </Button>
+             )}
+         </div>
+       </div>
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>

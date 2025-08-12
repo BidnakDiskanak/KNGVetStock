@@ -30,21 +30,10 @@ import { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 import type { ReportData, Officials, User } from "@/lib/types";
 
-// --- FUNGSI BARU UNTUK MENGURUTKAN DATA ---
-/**
- * Mengurutkan data laporan berdasarkan:
- * 1. Jenis Obat (A-Z)
- * 2. Nama Obat (A-Z)
- * 3. Expire Date (Terdekat ke Terjauh)
- * @param {ReportData[]} data - Array objek laporan.
- * @returns {ReportData[]} - Array objek laporan yang sudah diurutkan.
- */
 function urutkanDataLaporan(data: ReportData[]): ReportData[] {
-  // Membuat salinan array agar tidak mengubah state asli (prinsip immutability)
   const dataToSort = [...data];
 
   dataToSort.sort((a, b) => {
-    // 1. Bandingkan berdasarkan Jenis Obat (menangani jika null/undefined)
     const jenisA = a.jenisObat || "";
     const jenisB = b.jenisObat || "";
     const perbandinganJenis = jenisA.localeCompare(jenisB);
@@ -52,7 +41,6 @@ function urutkanDataLaporan(data: ReportData[]): ReportData[] {
       return perbandinganJenis;
     }
 
-    // 2. Jika Jenis Obat sama, bandingkan berdasarkan Nama Obat
     const namaA = a.medicineName || "";
     const namaB = b.medicineName || "";
     const perbandinganNama = namaA.localeCompare(namaB);
@@ -60,12 +48,9 @@ function urutkanDataLaporan(data: ReportData[]): ReportData[] {
       return perbandinganNama;
     }
 
-    // 3. Jika Nama Obat juga sama, bandingkan berdasarkan Expire Date
-    // 'expireDate' sudah dalam format Date, jadi bisa langsung dibandingkan
     const tanggalA = a.expireDate ? a.expireDate.getTime() : 0;
     const tanggalB = b.expireDate ? b.expireDate.getTime() : 0;
 
-    // Jika salah satu tanggal tidak ada, letakkan di akhir daftar
     if (!tanggalA && !tanggalB) return 0;
     if (!tanggalA) return 1;
     if (!tanggalB) return -1;
@@ -263,11 +248,8 @@ export default function ReportPage() {
       ],
     ];
 
-    // --- PERUBAHAN UTAMA DI SINI ---
-    // 1. Panggil fungsi pengurutan sebelum memetakan data ke body tabel
     const dataUrut = urutkanDataLaporan(reportData);
 
-    // 2. Gunakan 'dataUrut' untuk membuat body tabel
     const body = dataUrut.map((item, index) => [
       index + 1,
       item.jenisObat || "",
@@ -428,6 +410,7 @@ export default function ReportPage() {
   const columns: ColumnDef<ReportData>[] = [
     {
       id: "medicineNameGroup",
+      accessorKey: "medicineName",
       header: () => <div className="text-left">Nama Obat</div>,
       cell: ({ row }) => (
         <div className="text-left font-medium">
