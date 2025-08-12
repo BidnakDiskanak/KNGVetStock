@@ -92,7 +92,7 @@ export default function DashboardPage() {
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.akanKadaluarsa.toLocaleString('id-ID')}</div>
                         <p className="text-xs text-muted-foreground">Jumlah unit obat akan ED</p>
-                    </C</CardContent>
+                    </CardContent>
                 </Card>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
