@@ -7,13 +7,11 @@ import { Package, Pill, AlertTriangle, CalendarClock } from 'lucide-react';
 import { useUser } from '@/contexts/UserProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-// --- KEMBALI MENGGUNAKAN PATH ALIAS ---
-// Ini adalah cara yang benar. Masalahnya ada pada konfigurasi build, bukan pada path ini.
+// Menggunakan path alias, pastikan tsconfig.json sudah benar.
 import { getDashboardStatsAction } from '@/actions/dashboard-action';
 import { DataTable } from '@/app/(app)/dashboard/components/data-table-low-stock';
 import { columns as lowStockColumns } from '@/app/(app)/dashboard/components/columns-low-stock';
 import { columns as expiringColumns } from '@/app/(app)/dashboard/components/columns-expiring';
-// --- AKHIR PERUBAHAN ---
 
 import type { DashboardStats, User } from '@/lib/types';
 
@@ -130,9 +128,11 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
                 <Card className="lg:col-span-3">
+                    {/* --- PERBAIKAN DI SINI --- */}
                     <CardHeader>
                         <CardTitle>Obat dengan Stok Terendah</CardTitle>
-                    </Header>
+                    </CardHeader>
+                    {/* --- AKHIR PERBAIKAN --- */}
                     <CardContent>
                          <DataTable columns={lowStockColumns} data={stats.obatStokMenipis} />
                     </CardContent>
