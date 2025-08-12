@@ -5,13 +5,18 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Package, Pill, AlertTriangle, CalendarClock } from 'lucide-react';
 
 import { useUser } from '@/contexts/UserProvider';
-// --- PERBAIKAN PATH IMPOR ---
-import { getDashboardStatsAction } from '../../../actions/dashboard-action';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+// --- PERBAIKAN PATH IMPOR ---
+// Mencoba path relatif yang berbeda. Pastikan folder 'actions' berada di 'src/app/actions'.
+import { getDashboardStatsAction } from '../../actions/dashboard-action';
+
+// Pastikan nama folder dan file di bawah ini sama persis (termasuk huruf besar/kecil).
 import { DataTable } from './components/data-table-low-stock';
 import { columns as lowStockColumns } from './components/columns-low-stock';
 import { columns as expiringColumns } from './components/columns-expiring';
 // --- AKHIR PERBAIKAN ---
+
 import type { DashboardStats, User } from '@/lib/types';
 
 export default function DashboardPage() {
