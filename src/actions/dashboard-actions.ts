@@ -39,6 +39,7 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
 
     if (allRecords.length === 0) {
         console.log("Tidak ada catatan, mengembalikan statistik kosong.");
+        // Pastikan properti baru ditambahkan di sini juga
         return { success: true, data: { totalObat: 0, totalStok: 0, stokMenipis: 0, akanKadaluarsa: 0, obatStokMenipis: [], allMedicineStock: [], obatAkanKadaluarsa: [], stockByJenisObat: [] } };
     }
 
@@ -60,7 +61,6 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
     console.log(`Ditemukan ${finalData.length} batch obat yang aktif (stok > 0).`);
     
     const totalStok = finalData.reduce((sum, item) => sum + (item.keadaanBulanLaporanJml || 0), 0);
-    console.log(`Kalkulasi Total Stok: ${totalStok}`);
     
     const uniqueMedicineNames = new Set(finalData.map(item => item.medicineName));
     const totalObat = uniqueMedicineNames.size;
@@ -71,7 +71,6 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
         item.expireDate && item.expireDate.toDate() < expiryThreshold
     );
     const akanKadaluarsa = akanKadaluarsaItems.reduce((sum, item) => sum + (item.keadaanBulanLaporanJml || 0), 0);
-    console.log(`Kalkulasi Akan Kadaluarsa (jumlah unit): ${akanKadaluarsa}`);
 
     const stockByName: { [key: string]: { total: number, lokasi: string } } = {};
     finalData.forEach(item => {
@@ -91,25 +90,28 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
         }));
     const stokMenipis = obatStokMenipis.length;
     
+    // Data ini untuk diagram lingkaran yang lama (berdasarkan nama obat)
     const allMedicineStock = Object.entries(stockByName).map(([name, data]) => ({
         name,
         value: data.total
     }));
 
-    // --- LOGIKA BARU UNTUK DIAGRAM BATANG ---
+    // --- LOGIKA BARU UNTUK DIAGRAM BATANG (BERDASARKAN JENIS OBAT) ---
     const stockByJenis: { [key: string]: number } = {};
     finalData.forEach(item => {
-        const jenis = item.jenisObat || 'Lainnya'; // Fallback jika jenisObat kosong
+        // Gunakan 'Lainnya' jika jenisObat tidak ada/kosong
+        const jenis = item.jenisObat || 'Lainnya'; 
         if (!stockByJenis[jenis]) {
             stockByJenis[jenis] = 0;
         }
         stockByJenis[jenis] += item.keadaanBulanLaporanJml;
     });
 
+    // Ubah objek menjadi array dan urutkan agar tampilan di diagram lebih rapi
     const stockByJenisObat = Object.entries(stockByJenis).map(([name, value]) => ({
         name,
         value
-    })).sort((a, b) => a.value - b.value); // Urutkan dari terkecil ke terbesar untuk tampilan visual
+    })).sort((a, b) => a.value - b.value); 
     // --- AKHIR LOGIKA BARU ---
 
     const stats: DashboardStats = {
@@ -118,8 +120,8 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
         stokMenipis,
         akanKadaluarsa,
         obatStokMenipis,
-        allMedicineStock,
-        stockByJenisObat, // Tambahkan data baru ke response
+        allMedicineStock, // Data lama tetap ada jika masih diperlukan
+        stockByJenisObat, // Data baru untuk diagram batang
         obatAkanKadaluarsa: akanKadaluarsaItems.map(item => ({
             medicineName: item.medicineName,
             expireDate: format(item.expireDate.toDate(), "d LLL yyyy", { locale: id }),
