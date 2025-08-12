@@ -39,7 +39,7 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
 
     if (allRecords.length === 0) {
         console.log("Tidak ada catatan, mengembalikan statistik kosong.");
-        return { success: true, data: { totalObat: 0, totalStok: 0, stokMenipis: 0, akanKadaluarsa: 0, obatStokMenipis: [], allMedicineStock: [], obatAkanKadaluarsa: [] } };
+        return { success: true, data: { totalObat: 0, totalStok: 0, stokMenipis: 0, akanKadaluarsa: 0, obatStokMenipis: [], allMedicineStock: [], obatAkanKadaluarsa: [], stockByJenisObat: [] } };
     }
 
     const recordsByBatch: { [key: string]: any[] } = {};
@@ -96,6 +96,22 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
         value: data.total
     }));
 
+    // --- LOGIKA BARU UNTUK DIAGRAM BATANG ---
+    const stockByJenis: { [key: string]: number } = {};
+    finalData.forEach(item => {
+        const jenis = item.jenisObat || 'Lainnya'; // Fallback jika jenisObat kosong
+        if (!stockByJenis[jenis]) {
+            stockByJenis[jenis] = 0;
+        }
+        stockByJenis[jenis] += item.keadaanBulanLaporanJml;
+    });
+
+    const stockByJenisObat = Object.entries(stockByJenis).map(([name, value]) => ({
+        name,
+        value
+    })).sort((a, b) => a.value - b.value); // Urutkan dari terkecil ke terbesar untuk tampilan visual
+    // --- AKHIR LOGIKA BARU ---
+
     const stats: DashboardStats = {
         totalObat,
         totalStok,
@@ -103,6 +119,7 @@ export async function getDashboardStatsAction(user: User): Promise<ActionRespons
         akanKadaluarsa,
         obatStokMenipis,
         allMedicineStock,
+        stockByJenisObat, // Tambahkan data baru ke response
         obatAkanKadaluarsa: akanKadaluarsaItems.map(item => ({
             medicineName: item.medicineName,
             expireDate: format(item.expireDate.toDate(), "d LLL yyyy", { locale: id }),

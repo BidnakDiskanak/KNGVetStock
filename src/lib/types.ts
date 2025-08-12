@@ -174,4 +174,8 @@ export interface DashboardStats {
         expireDate: string;
         lokasi: string;
     }[];
+    stockByJenisObat: {
+        name: string;
+        value: number;
+    }[];
 }
