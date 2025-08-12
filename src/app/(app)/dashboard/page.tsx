@@ -7,9 +7,11 @@ import { Package, Pill, AlertTriangle, CalendarClock } from 'lucide-react';
 import { useUser } from '@/contexts/UserProvider';
 import { getDashboardStatsAction } from '@/actions/dashboard-action';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DataTable } from '@/app/(app)/dashboard/components/data-table-low-stock';
-import { columns as lowStockColumns } from '@/app/(app)/dashboard/components/columns-low-stock';
-import { columns as expiringColumns } from '@/app/(app)/dashboard/components/columns-expiring';
+// --- PERBAIKAN PATH IMPOR ---
+import { DataTable } from './components/data-table-low-stock';
+import { columns as lowStockColumns } from './components/columns-low-stock';
+import { columns as expiringColumns } from './components/columns-expiring';
+// --- AKHIR PERBAIKAN ---
 import type { DashboardStats, User } from '@/lib/types';
 
 export default function DashboardPage() {
