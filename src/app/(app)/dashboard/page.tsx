@@ -7,15 +7,13 @@ import { Package, Pill, AlertTriangle, CalendarClock } from 'lucide-react';
 import { useUser } from '@/contexts/UserProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-// --- PERBAIKAN PATH IMPOR ---
-// Path untuk 'actions' telah diperbaiki.
-import { getDashboardStatsAction } from '../../../actions/dashboard-action';
-
-// Pastikan nama folder dan file di bawah ini sama persis (termasuk huruf besar/kecil) dengan yang ada di repositori Anda.
-import { DataTable } from './components/data-table-low-stock';
-import { columns as lowStockColumns } from './components/columns-low-stock';
-import { columns as expiringColumns } from './components/columns-expiring';
-// --- AKHIR PERBAIKAN ---
+// --- KEMBALI MENGGUNAKAN PATH ALIAS ---
+// Ini adalah cara yang benar. Masalahnya ada pada konfigurasi build, bukan pada path ini.
+import { getDashboardStatsAction } from '@/actions/dashboard-action';
+import { DataTable } from '@/app/(app)/dashboard/components/data-table-low-stock';
+import { columns as lowStockColumns } from '@/app/(app)/dashboard/components/columns-low-stock';
+import { columns as expiringColumns } from '@/app/(app)/dashboard/components/columns-expiring';
+// --- AKHIR PERUBAHAN ---
 
 import type { DashboardStats, User } from '@/lib/types';
 
@@ -134,7 +132,7 @@ export default function DashboardPage() {
                 <Card className="lg:col-span-3">
                     <CardHeader>
                         <CardTitle>Obat dengan Stok Terendah</CardTitle>
-                    </CardHeader>
+                    </Header>
                     <CardContent>
                          <DataTable columns={lowStockColumns} data={stats.obatStokMenipis} />
                     </CardContent>
