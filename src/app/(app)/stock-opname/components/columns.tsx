@@ -24,9 +24,10 @@ export interface StockOpnameActionHandlers {
 
 export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<StockOpname>[] => [
   {
-    id: 'medicineNameGroup',
-    header: () => <div className="text-left">Nama Obat</div>,
+    // --- PERBAIKAN DI SINI ---
+    // Menghapus 'id' agar accessorKey digunakan sebagai ID default untuk filter.
     accessorKey: "medicineName",
+    header: () => <div className="text-left">Nama Obat</div>,
     cell: ({ row }) => <div className="text-left font-medium">{row.original.medicineName}</div>,
   },
   {
@@ -65,7 +66,6 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
           { header: () => <div className="text-center font-bold">Jml</div>, accessorKey: "keadaanBulanLaporanJml", cell: ({ row }) => <div className="text-center font-bold">{row.original.keadaanBulanLaporanJml}</div> },
       ],
   },
-  // --- PERUBAHAN DIMULAI DI SINI ---
   {
     id: 'expireDateGroup',
     header: "Expire Date",
@@ -85,12 +85,11 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
         return <div className="text-center">-</div>;
     }
   },
-  // --- PERUBAHAN SELESAI DI SINI ---
   {
     id: "actions",
     cell: ({ row }) => {
       const opname = row.original
- 
+
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
