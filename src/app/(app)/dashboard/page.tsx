@@ -100,7 +100,6 @@ export default function DashboardPage() {
             );
             const akanKadaluarsaCount = akanKadaluarsaItems.length;
 
-            // --- LOGIKA BARU UNTUK DIAGRAM BATANG ---
             const stockByJenis: { [key: string]: number } = {};
             finalData.forEach(item => {
                 const jenis = item.jenisObat || 'Lainnya';
@@ -113,9 +112,8 @@ export default function DashboardPage() {
             const stockByJenisObat = Object.entries(stockByJenis).map(([name, value]) => ({
                 name,
                 value
-            })).sort((a, b) => a.value - b.value);
-            // --- AKHIR LOGIKA BARU ---
-
+            })).sort((a, b) => b.value - a.value); // Mengurutkan dari terbesar ke terkecil
+            
             const newStats: DashboardStats = {
                 totalObat,
                 totalStok,
@@ -126,7 +124,7 @@ export default function DashboardPage() {
                     sisaStok: item.keadaanBulanLaporanJml,
                     lokasi: item.userLocation || ''
                 })),
-                stockByJenisObat, // Menggunakan data baru
+                stockByJenisObat, 
                 obatAkanKadaluarsa: akanKadaluarsaItems.map(item => ({
                     medicineName: item.medicineName,
                     expireDate: format(item.expireDate!, "d LLL yyyy", { locale: id }),
@@ -207,45 +205,8 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
+            {/* --- PERUBAHAN TATA LETAK --- */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* --- PERUBAHAN DIAGRAM --- */}
-                <Card className="lg:col-span-1">
-                    <CardHeader>
-                        <CardTitle>Distribusi Stok per Jenis Obat</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pl-0">
-                        {stats?.stockByJenisObat && stats.stockByJenisObat.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={350}>
-                                <BarChart
-                                    data={stats.stockByJenisObat}
-                                    layout="vertical"
-                                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis type="number" fontSize={10} />
-                                    <YAxis 
-                                        dataKey="name" 
-                                        type="category" 
-                                        width={110} 
-                                        tick={{ fontSize: 10 }}
-                                        interval={0}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{ fontSize: '12px', padding: '5px' }}
-                                        formatter={(value: number) => [value.toLocaleString('id-ID'), 'Jumlah Stok']}
-                                    />
-                                    <Legend wrapperStyle={{ fontSize: '12px' }} />
-                                    <Bar dataKey="value" name="Jumlah Stok" fill="#16a085" barSize={15} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="flex h-[350px] items-center justify-center text-center text-muted-foreground">
-                                <p>Tidak ada data untuk ditampilkan di grafik.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-                {/* --- AKHIR PERUBAHAN DIAGRAM --- */}
                 <Card className="lg:col-span-1">
                     <CardHeader>
                         <CardTitle>Obat dengan Stok Terendah</CardTitle>
@@ -279,10 +240,7 @@ export default function DashboardPage() {
                         </Table>
                     </CardContent>
                 </Card>
-            </div>
-            
-            <div className="grid grid-cols-1">
-                   <Card>
+                <Card className="lg:col-span-1">
                       <CardHeader>
                           <CardTitle>Obat Akan Segera Kadaluarsa</CardTitle>
                       </CardHeader>
@@ -315,6 +273,44 @@ export default function DashboardPage() {
                           </Table>
                       </CardContent>
                   </Card>
+            </div>
+            
+            <div className="grid grid-cols-1">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Distribusi Stok per Jenis Obat</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pl-0">
+                        {stats?.stockByJenisObat && stats.stockByJenisObat.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={350}>
+                                <BarChart
+                                    data={stats.stockByJenisObat}
+                                    margin={{ top: 5, right: 30, left: 20, bottom: 50 }} // Menambah margin bawah
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis 
+                                        dataKey="name" 
+                                        tick={{ fontSize: 10 }}
+                                        angle={-45} // Memiringkan label
+                                        textAnchor="end" // Mengatur posisi anchor
+                                        interval={0}
+                                    />
+                                    <YAxis tick={{ fontSize: 10 }} />
+                                    <Tooltip
+                                        contentStyle={{ fontSize: '12px', padding: '5px' }}
+                                        formatter={(value: number) => [value.toLocaleString('id-ID'), 'Jumlah Stok']}
+                                    />
+                                    <Legend wrapperStyle={{ fontSize: '12px' }} />
+                                    <Bar dataKey="value" name="Jumlah Stok" fill="#16a085" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex h-[350px] items-center justify-center text-center text-muted-foreground">
+                                <p>Tidak ada data untuk ditampilkan di grafik.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );
