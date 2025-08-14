@@ -159,45 +159,38 @@ export default function ReportPage() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
 
-    // Bagian header ini tidak diubah, sesuai permintaan.
+    // --- HEADER DIKEMBALIKAN KE VERSI ASLI ---
     if (user?.role === "admin") {
       doc.text(
-        officials.namaDinas || "DINAS PERIKANAN DAN PETERNAKAN",
+        "LAPORAN STOCK OPNAME BARANG OBAT-OBATAN DAN VAKSIN",
         pageWidth / 2,
         margin,
         { align: "center" }
       );
-      doc.setFontSize(10);
       doc.text(
-        officials.alamatDinas || "Alamat Dinas",
+        "BIDANG PETERNAKAN DINAS PERIKANAN DAN PETERNAKAN",
         pageWidth / 2,
         margin + 5,
         { align: "center" }
       );
+      doc.text("KABUPATEN KUNINGAN", pageWidth / 2, margin + 10, {
+        align: "center",
+      });
     } else {
       doc.text(
-        officials.namaUPTD || user?.location?.toUpperCase() || "UPTD",
+        `LAPORAN STOCK OPNAME OBAT-OBATAN DAN VAKSIN`,
         pageWidth / 2,
         margin,
         { align: "center" }
       );
-      doc.setFontSize(10);
       doc.text(
-        officials.alamatUPTD || "Alamat UPTD",
+        user?.location?.toUpperCase() || "LOKASI UPTD",
         pageWidth / 2,
         margin + 5,
         { align: "center" }
       );
     }
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(
-      "LAPORAN STOCK OPNAME BARANG OBAT-OBATAN DAN VAKSIN",
-      pageWidth / 2,
-      margin + 12,
-      { align: "center" }
-    );
+    // --- AKHIR PERUBAHAN HEADER ---
 
     const period = `PERIODE: ${format(
       new Date(selectedYear, selectedMonth),
@@ -206,7 +199,7 @@ export default function ReportPage() {
     ).toUpperCase()}`;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
-    doc.text(period, margin, margin + 22);
+    doc.text(period, margin, margin + 20);
 
     const head = [
       [
@@ -237,7 +230,7 @@ export default function ReportPage() {
     ]);
 
     autoTable(doc, {
-      startY: margin + 27, head, body, theme: "grid",
+      startY: margin + 25, head, body, theme: "grid",
       headStyles: { fillColor: [22, 160, 133], textColor: 255, halign: "center", valign: "middle", fontSize: 8 },
       styles: { cellPadding: 1, fontSize: 8, halign: "center" },
       columnStyles: { 1: { halign: "left" }, 2: { halign: "left" } },
@@ -256,6 +249,7 @@ export default function ReportPage() {
     const placeholderName = "(.........................................)";
     const placeholderNip = "NIP. .....................................";
     
+    // Teks lokasi dan tanggal tetap dinamis
     const locationAndDateText = user?.role === 'admin'
       ? `${officials.kabupaten || 'Kabupaten'}, ${signatureDate}`
       : `${officials.kecamatan || 'Kecamatan'}, ${signatureDate}`;
@@ -276,9 +270,8 @@ export default function ReportPage() {
       doc.text(user?.name || placeholderName, pageWidth - margin, signatureY + 28, { align: "right" });
       doc.text(user?.nip ? `NIP. ${user.nip}` : placeholderNip, pageWidth - margin, signatureY + 32, { align: "right" });
     } else {
-      // --- PERBAIKAN TANDA TANGAN UPTD ---
+      // Jabatan Kepala UPTD tetap dinamis
       doc.text("Mengetahui,", margin, signatureY);
-      // Menggunakan nama UPTD dari pengaturan
       doc.text(`Kepala ${officials.namaUPTD || user?.location?.toUpperCase() || 'UPTD'}`, margin, signatureY + 4);
       doc.text(officials.kepalaUPTD || placeholderName, margin, signatureY + 28);
       doc.text(officials.nipKepalaUPTD ? `NIP. ${officials.nipKepalaUPTD}` : placeholderNip, margin, signatureY + 32);
@@ -287,7 +280,6 @@ export default function ReportPage() {
       doc.text("Yang Melaporkan,", pageWidth - margin, signatureY + 4, { align: "right" });
       doc.text(user?.name || placeholderName, pageWidth - margin, signatureY + 28, { align: "right" });
       doc.text(user?.nip ? `NIP. ${user.nip}` : placeholderNip, pageWidth - margin, signatureY + 32, { align: "right" });
-      // --- AKHIR PERBAIKAN ---
     }
 
     doc.save(`laporan-stock-opname-${format(new Date(), "yyyy-MM-dd")}.pdf`);
