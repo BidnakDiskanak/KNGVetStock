@@ -25,7 +25,8 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { Table, TableBody, TableCell, TableHead, Header, TableRow } from "@/components/ui/table";
+// --- PERBAIKAN DI SINI ---
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from '@/components/ui/skeleton';
@@ -282,7 +283,7 @@ export default function ReportPage() {
     });
 
     // --- TANDA TANGAN ---
-    const finalY = (doc as any).lastAutoTable.finalY || pageHeight / 2;
+    const finalY = (doc as any).lastAutoTable.finalY || doc.internal.pageSize.getHeight() / 2;
     let signatureY = finalY + 10;
     if (signatureY > doc.internal.pageSize.getHeight() - 50) {
         doc.addPage();
