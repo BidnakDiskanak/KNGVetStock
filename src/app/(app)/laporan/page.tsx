@@ -1,345 +1,576 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import type { StockOpname, Officials, User } from '@/lib/types';
+import { useEffect, useState } from "react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { id } from "date-fns/locale";
+import { Calendar as CalendarIcon, Printer } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-import { useUser } from '@/contexts/UserProvider';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { getOfficialsAction } from "@/actions/settings-actions";
-
-// --- UI Components ---
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  SortingState,
-  useReactTable,
-} from "@tanstack/react-table";
-// --- PERBAIKAN DI SINI ---
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
+import { useUser } from "@/contexts/UserProvider";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowUpDown, Calendar as CalendarIcon, Printer } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DataTable } from "@/app/(app)/stock-opname/components/data-table";
+import { getReportDataAction } from "@/actions/report-actions";
+import { getOfficialsAction } from "@/actions/settings-actions";
+import { useToast } from "@/hooks/use-toast";
+import { ColumnDef } from "@tanstack/react-table";
+import { cn } from "@/lib/utils";
+import type { ReportData, Officials, User } from "@/lib/types";
 
+function urutkanDataLaporan(data: ReportData[]): ReportData[] {
+  const dataToSort = [...data];
 
-// --- Kolom untuk Data Table (Format Sederhana & Akurat) ---
-export const columns: ColumnDef<StockOpname>[] = [
-    {
-      accessorKey: "medicineName",
-      header: ({ column }) => (
-          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-            Nama Obat <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-      ),
-      cell: ({ row }) => <div className="pl-4">{row.getValue("medicineName")}</div>,
-    },
-    { accessorKey: "stockSystem", header: () => <div className="text-center">Stok Sistem</div>, cell: ({ row }) => <div className="text-center">{row.getValue("stockSystem")}</div> },
-    { accessorKey: "stockReal", header: () => <div className="text-center">Stok Fisik</div>, cell: ({ row }) => <div className="text-center">{row.getValue("stockReal")}</div> },
-    {
-      accessorKey: "difference",
-      header: () => <div className="text-center">Selisih</div>,
-      cell: ({ row }) => {
-        const difference = row.getValue("difference") as number;
-        const color = difference < 0 ? "text-red-500" : "text-green-500";
-        return <div className={`text-center font-medium ${color}`}>{difference}</div>
-      },
-    },
-    { accessorKey: "unit", header: "Satuan" },
-    {
-      accessorKey: "opnameDate",
-      header: "Tgl Opname Terakhir",
-      cell: ({ row }) => <span>{format(row.getValue("opnameDate") as Date, "d MMM yyyy", { locale: id })}</span>,
-    },
-    {
-      accessorKey: "expireDate",
-      header: "Tgl Kedaluwarsa",
-      cell: ({ row }) => {
-        const date = row.getValue("expireDate") as Date | undefined;
-        return date ? <span>{format(date, "d MMM yyyy", { locale: id })}</span> : <span className="text-muted-foreground">-</span>;
-      },
+  dataToSort.sort((a, b) => {
+    const jenisA = a.jenisObat || "";
+    const jenisB = b.jenisObat || "";
+    const perbandinganJenis = jenisA.localeCompare(jenisB);
+    if (perbandinganJenis !== 0) {
+      return perbandinganJenis;
     }
-];
 
-// --- Komponen Data Table ---
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
-  data: TData[];
-  filterColumn: string;
-}
+    const namaA = a.medicineName || "";
+    const namaB = b.medicineName || "";
+    const perbandinganNama = namaA.localeCompare(namaB);
+    if (perbandinganNama !== 0) {
+      return perbandinganNama;
+    }
 
-function DataTable<TData, TValue>({ columns, data, filterColumn }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const table = useReactTable({
-    data, columns, getCoreRowModel: getCoreRowModel(), getPaginationRowModel: getPaginationRowModel(),
-    onSortingChange: setSorting, getSortedRowModel: getSortedRowModel(), getFilteredRowModel: getFilteredRowModel(),
-    state: { sorting },
+    const tanggalA = a.expireDate ? a.expireDate.getTime() : 0;
+    const tanggalB = b.expireDate ? b.expireDate.getTime() : 0;
+
+    if (!tanggalA && !tanggalB) return 0;
+    if (!tanggalA) return 1;
+    if (!tanggalB) return -1;
+
+    return tanggalA - tanggalB;
   });
 
-  return (
-    <div>
-      <div className="flex items-center py-4">
-        <Input
-          placeholder={`Cari nama obat...`}
-          value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""}
-          onChange={(event) => table.getColumn(filterColumn)?.setFilterValue(event.target.value)}
-          className="max-w-sm"
-        />
-      </div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">Tidak ada data untuk periode yang dipilih.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>Sebelumnya</Button>
-        <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Berikutnya</Button>
-      </div>
-    </div>
-  );
+  return dataToSort;
 }
 
-
-// --- Halaman Laporan Utama ---
 export default function ReportPage() {
   const { user } = useUser();
+  const [reportData, setReportData] = useState<ReportData[]>([]);
+  const [officials, setOfficials] = useState<Officials>({});
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const [allOpnames, setAllOpnames] = useState<StockOpname[]>([]);
-  const [laporanData, setLaporanData] = useState<StockOpname[]>([]);
-  const [officials, setOfficials] = useState<Officials>({});
-  const [loading, setLoading] = useState(true);
-
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(
+    new Date().getMonth()
+  );
+  const [selectedYear, setSelectedYear] = useState<number>(
+    new Date().getFullYear()
+  );
   const [printDate, setPrintDate] = useState<Date | undefined>(new Date());
 
-  // 1. Ambil semua data opname & data pejabat sekali saja saat komponen dimuat
   useEffect(() => {
-    if (!user) {
-        setLoading(false);
-        return;
-    };
-
-    // Ambil data pejabat
-    getOfficialsAction(user as User).then(result => {
+    async function fetchOfficials() {
+      if (user) {
+        const result = await getOfficialsAction(user as User);
         if (result.success && result.data) {
-            setOfficials(result.data);
+          setOfficials(result.data);
         } else {
-            console.error("Gagal mengambil data pejabat:", result.error);
+          console.error("Gagal mengambil data pejabat:", result.error);
         }
-    });
+      }
+    }
+    fetchOfficials();
+  }, [user]);
 
-    // Ambil semua data stock opname
-    const q = query(collection(db, "stock-opnames"));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const opnamesData: StockOpname[] = [];
-        querySnapshot.forEach(doc => {
-            const data = doc.data();
-            const opnameDate = data.opnameDate?.toDate();
-            if (opnameDate && !isNaN(opnameDate.getTime())) {
-                opnamesData.push({
-                    id: doc.id, ...data, opnameDate,
-                    expireDate: data.expireDate?.toDate(),
-                } as StockOpname);
-            }
-        });
-        setAllOpnames(opnamesData);
-        setLoading(false);
-    }, (error) => {
-        console.error("Gagal mengambil data opname:", error);
-        setLoading(false);
-        toast({ title: "Gagal Memuat Data", variant: "destructive" });
-    });
-
-    return () => unsubscribe();
-  }, [user, toast]);
-  
-  // 2. Logika untuk memfilter dan menampilkan laporan
-  const handleGenerateReport = () => {
+  const handleGenerateReport = async () => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Silakan login ulang.",
+        variant: "destructive",
+      });
+      return;
+    }
     setLoading(true);
-    const startDate = startOfMonth(new Date(selectedYear, selectedMonth));
+    setReportData([]);
+
     const endDate = endOfMonth(new Date(selectedYear, selectedMonth));
 
-    // Filter opname yang terjadi dalam rentang bulan yang dipilih
-    const filteredByDate = allOpnames.filter(record => {
-        return record.opnameDate >= startDate && record.opnameDate <= endDate;
-    });
+    const result = await getReportDataAction({ endDate }, user as User);
 
-    if (filteredByDate.length === 0) {
-        toast({ title: "Informasi", description: "Tidak ada data stock opname pada periode yang dipilih." });
-        setLaporanData([]);
-        setLoading(false);
-        return;
+    if (result.success && result.data) {
+      setReportData(result.data);
+      if (result.data.length === 0) {
+        toast({
+          title: "Informasi",
+          description: "Tidak ada data stock opname pada periode yang dipilih.",
+        });
+      }
+    } else {
+      toast({
+        title: "Gagal Menghasilkan Laporan",
+        description: result.error || "Terjadi kesalahan.",
+        variant: "destructive",
+      });
     }
 
-    // Kelompokkan data berdasarkan batch unik (nama obat + ED)
-    const recordsByBatch: { [key: string]: StockOpname[] } = {};
-    for (const record of filteredByDate) {
-        const expireDateString = record.expireDate ? record.expireDate.toISOString() : 'no-expiry';
-        const key = `${record.medicineName}|${expireDateString}`;
-        if (!recordsByBatch[key]) recordsByBatch[key] = [];
-        recordsByBatch[key].push(record);
-    }
-
-    // Dari setiap kelompok, ambil hanya data yang paling baru (opname terakhir di bulan itu)
-    const latestRecordsInPeriod = Object.values(recordsByBatch).map(records => {
-        return records.sort((a, b) => b.opnameDate.getTime() - a.opnameDate.getTime())[0];
-    });
-    
-    // Urutkan hasil akhir agar mudah dibaca
-    latestRecordsInPeriod.sort((a, b) => a.medicineName.localeCompare(b.medicineName));
-
-    setLaporanData(latestRecordsInPeriod);
     setLoading(false);
   };
 
-  // 3. Logika untuk mencetak ke PDF
   const handlePrintReport = () => {
-    if (laporanData.length === 0) {
-        toast({ title: "Tidak Ada Data", description: "Tidak ada data untuk dicetak.", variant: "destructive" });
-        return;
+    if (reportData.length === 0) {
+      toast({
+        title: "Tidak Ada Data",
+        description: "Tidak ada data untuk dicetak.",
+        variant: "destructive",
+      });
+      return;
     }
 
     const doc = new jsPDF({ orientation: "landscape" });
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 14;
 
-    // --- KOP SURAT ---
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    const reportTitle = "LAPORAN STOCK OPNAME OBAT-OBATAN DAN VAKSIN";
-    const officeName = user?.role === "admin" ? "BIDANG PETERNAKAN DINAS PERIKANAN DAN PETERNAKAN" : (user?.location?.toUpperCase() || "LOKASI UPTD");
-    const district = user?.role === "admin" ? "KABUPATEN KUNINGAN" : "";
-    
-    doc.text(reportTitle, pageWidth / 2, margin, { align: "center" });
-    doc.text(officeName, pageWidth / 2, margin + 5, { align: "center" });
-    if (district) doc.text(district, pageWidth / 2, margin + 10, { align: "center" });
+    if (user?.role === "admin") {
+      doc.text(
+        "LAPORAN STOCK OPNAME BARANG OBAT-OBATAN DAN VAKSIN",
+        pageWidth / 2,
+        margin,
+        { align: "center" }
+      );
+      doc.text(
+        "BIDANG PETERNAKAN DINAS PERIKANAN DAN PETERNAKAN",
+        pageWidth / 2,
+        margin + 5,
+        { align: "center" }
+      );
+      doc.text("KABUPATEN KUNINGAN", pageWidth / 2, margin + 10, {
+        align: "center",
+      });
+    } else {
+      doc.text(
+        `LAPORAN STOCK OPNAME OBAT-OBATAN DAN VAKSIN`,
+        pageWidth / 2,
+        margin,
+        { align: "center" }
+      );
+      doc.text(
+        user?.location?.toUpperCase() || "LOKASI UPTD",
+        pageWidth / 2,
+        margin + 5,
+        { align: "center" }
+      );
+    }
 
-    const period = `PERIODE: ${format(new Date(selectedYear, selectedMonth), "MMMM yyyy", { locale: id }).toUpperCase()}`;
+    const period = `PERIODE: ${format(
+      new Date(selectedYear, selectedMonth),
+      "MMMM yyyy",
+      { locale: id }
+    ).toUpperCase()}`;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.text(period, margin, margin + 20);
 
-    // --- TABEL DATA ---
-    const head = [["No", "Nama Obat", "Stok Sistem", "Stok Fisik", "Selisih", "Satuan", "Tgl Opname", "Tgl Kedaluwarsa"]];
-    const body = laporanData.map((item, index) => [
-        index + 1,
-        item.medicineName,
-        item.stockSystem,
-        item.stockReal,
-        item.difference,
-        item.unit,
-        format(item.opnameDate, "d MMM yyyy", { locale: id }),
-        item.expireDate ? format(item.expireDate, "d MMM yyyy", { locale: id }) : "-",
+    const head = [
+      [
+        {
+          content: "NO",
+          rowSpan: 2,
+          styles: { halign: "center", valign: "middle" },
+        },
+        {
+          content: "JENIS OBAT",
+          rowSpan: 2,
+          styles: { halign: "center", valign: "middle" },
+        },
+        {
+          content: "NAMA OBAT",
+          rowSpan: 2,
+          styles: { halign: "center", valign: "middle" },
+        },
+        {
+          content: "SATUAN",
+          rowSpan: 2,
+          styles: { halign: "center", valign: "middle" },
+        },
+        {
+          content: "KEADAAN BULAN LALU",
+          colSpan: 3,
+          styles: { halign: "center" },
+        },
+        { content: "PEMASUKAN", colSpan: 3, styles: { halign: "center" } },
+        { content: "PENGELUARAN", colSpan: 3, styles: { halign: "center" } },
+        {
+          content: "KEADAAN S/D BULAN LAPORAN",
+          colSpan: 3,
+          styles: { halign: "center" },
+        },
+        {
+          content: "EXPIRE DATE",
+          rowSpan: 2,
+          styles: { halign: "center", valign: "middle" },
+        },
+        {
+          content: "ASAL BARANG",
+          rowSpan: 2,
+          styles: { halign: "center", valign: "middle" },
+        },
+        {
+          content: "KETERANGAN",
+          rowSpan: 2,
+          styles: { halign: "center", valign: "middle" },
+        },
+      ],
+      [
+        "BAIK",
+        "RUSAK",
+        "JML",
+        "BAIK",
+        "RUSAK",
+        "JML",
+        "BAIK",
+        "RUSAK",
+        "JML",
+        "BAIK",
+        "RUSAK",
+        "JML",
+      ],
+    ];
+
+    const dataUrut = urutkanDataLaporan(reportData);
+
+    const body = dataUrut.map((item, index) => [
+      index + 1,
+      item.jenisObat || "",
+      item.medicineName,
+      item.satuan || "",
+      item.keadaanBulanLaluBaik,
+      item.keadaanBulanLaluRusak,
+      item.keadaanBulanLaluJml,
+      item.pemasukanBaik,
+      item.pemasukanRusak,
+      item.pemasukanJml,
+      item.pengeluaranBaik,
+      item.pengeluaranRusak,
+      item.pengeluaranJml,
+      item.keadaanBulanLaporanBaik,
+      item.keadaanBulanLaporanRusak,
+      item.keadaanBulanLaporanJml,
+      item.expireDate
+        ? format(item.expireDate, "d LLL yyyy", { locale: id })
+        : "",
+      item.asalBarang || "",
+      item.keterangan || "",
     ]);
 
     autoTable(doc, {
-        startY: margin + 25,
-        head: head,
-        body: body,
-        theme: "grid",
-        headStyles: { fillColor: [22, 160, 133], textColor: 255, halign: "center", valign: "middle", fontSize: 8 },
-        styles: { cellPadding: 1, fontSize: 8, halign: "center" },
-        columnStyles: { 1: { halign: "left" } },
+      startY: margin + 25,
+      head: head,
+      body: body,
+      theme: "grid",
+      headStyles: {
+        fillColor: [22, 160, 133],
+        textColor: 255,
+        halign: "center",
+        valign: "middle",
+        fontSize: 8,
+      },
+      styles: { cellPadding: 1, fontSize: 8, halign: "center" },
+      columnStyles: {
+        1: { halign: "left" },
+        2: { halign: "left" },
+      },
     });
 
-    // --- TANDA TANGAN ---
-    const finalY = (doc as any).lastAutoTable.finalY || doc.internal.pageSize.getHeight() / 2;
+    const finalY = (doc as any).lastAutoTable.finalY || pageHeight / 2;
     let signatureY = finalY + 10;
-    if (signatureY > doc.internal.pageSize.getHeight() - 50) {
-        doc.addPage();
-        signatureY = margin;
+
+    if (signatureY > pageHeight - 50) {
+      doc.addPage();
+      signatureY = margin;
     }
 
     doc.setFontSize(10);
-    const signatureDate = printDate ? format(printDate, "d MMMM yyyy", { locale: id }) : format(new Date(), "d MMMM yyyy", { locale: id });
+    const signatureDate = printDate
+      ? format(printDate, "d MMMM yyyy", { locale: id })
+      : format(new Date(), "d MMMM yyyy", { locale: id });
     const placeholderName = "(.........................................)";
     const placeholderNip = "NIP. .....................................";
 
-    // Tanda tangan disesuaikan dengan role
     if (user?.role === "admin") {
-      // Tiga tanda tangan untuk admin
       doc.text("Mengetahui,", margin, signatureY);
-      doc.text("Kepala Dinas Perikanan dan Peternakan", margin, signatureY + 4);
-      doc.text(officials.kepalaDinas || placeholderName, margin, signatureY + 28);
-      doc.text(officials.nipKepalaDinas ? `NIP. ${officials.nipKepalaDinas}` : placeholderNip, margin, signatureY + 32);
+      doc.text(
+        "Kepala Dinas Perikanan dan Peternakan",
+        margin,
+        signatureY + 4
+      );
+      doc.text("Kabupaten Kuningan", margin, signatureY + 8);
+      doc.text(
+        officials.kepalaDinas || placeholderName,
+        margin,
+        signatureY + 28
+      );
+      doc.text(
+        officials.nipKepalaDinas
+          ? `NIP. ${officials.nipKepalaDinas}`
+          : placeholderNip,
+        margin,
+        signatureY + 32
+      );
 
       const centerPos = pageWidth / 2;
-      doc.text("Kepala Bidang Peternakan", centerPos, signatureY + 4, { align: "center" });
-      doc.text(officials.kepalaBidang || placeholderName, centerPos, signatureY + 28, { align: "center" });
-      doc.text(officials.nipKepalaBidang ? `NIP. ${officials.nipKepalaBidang}` : placeholderNip, centerPos, signatureY + 32, { align: "center" });
+      doc.text("Kepala Bidang Peternakan", centerPos, signatureY + 4, {
+        align: "center",
+      });
+      doc.text(
+        officials.kepalaBidang || placeholderName,
+        centerPos,
+        signatureY + 28,
+        { align: "center" }
+      );
+      doc.text(
+        officials.nipKepalaBidang
+          ? `NIP. ${officials.nipKepalaBidang}`
+          : placeholderNip,
+        centerPos,
+        signatureY + 32,
+        { align: "center" }
+      );
 
-      doc.text(`Kuningan, ${signatureDate}`, pageWidth - margin, signatureY, { align: "right" });
-      doc.text("Petugas,", pageWidth - margin, signatureY + 4, { align: "right" });
-      doc.text(user?.name || placeholderName, pageWidth - margin, signatureY + 28, { align: "right" });
-      doc.text(user?.nip ? `NIP. ${user.nip}` : placeholderNip, pageWidth - margin, signatureY + 32, { align: "right" });
+      doc.text(`Kuningan, ${signatureDate}`, pageWidth - margin, signatureY, {
+        align: "right",
+      });
+      doc.text("Petugas,", pageWidth - margin, signatureY + 4, {
+        align: "right",
+      });
+      doc.text(
+        user?.name || placeholderName,
+        pageWidth - margin,
+        signatureY + 28,
+        { align: "right" }
+      );
+      doc.text(
+        user?.nip ? `NIP. ${user.nip}` : placeholderNip,
+        pageWidth - margin,
+        signatureY + 32,
+        { align: "right" }
+      );
     } else {
-      // Dua tanda tangan untuk non-admin
       doc.text("Mengetahui,", margin, signatureY);
       doc.text("Kepala UPTD", margin, signatureY + 4);
-      doc.text(officials.kepalaUPTD || placeholderName, margin, signatureY + 28);
-      doc.text(officials.nipKepalaUPTD ? `NIP. ${officials.nipKepalaUPTD}` : placeholderNip, margin, signatureY + 32);
+      doc.text(
+        officials.kepalaUPTD || placeholderName,
+        margin,
+        signatureY + 28
+      );
+      doc.text(
+        officials.nipKepalaUPTD
+          ? `NIP. ${officials.nipKepalaUPTD}`
+          : placeholderNip,
+        margin,
+        signatureY + 32
+      );
 
-      doc.text(`Kuningan, ${signatureDate}`, pageWidth - margin, signatureY, { align: "right" });
-      doc.text("Yang Melaporkan,", pageWidth - margin, signatureY + 4, { align: "right" });
-      doc.text(user?.name || placeholderName, pageWidth - margin, signatureY + 28, { align: "right" });
-      doc.text(user?.nip ? `NIP. ${user.nip}` : placeholderNip, pageWidth - margin, signatureY + 32, { align: "right" });
+      doc.text(`Kuningan, ${signatureDate}`, pageWidth - margin, signatureY, {
+        align: "right",
+      });
+      doc.text("Yang Melaporkan,", pageWidth - margin, signatureY + 4, {
+        align: "right",
+      });
+      doc.text(
+        user?.name || placeholderName,
+        pageWidth - margin,
+        signatureY + 28,
+        { align: "right" }
+      );
+      doc.text(
+        user?.nip ? `NIP. ${user.nip}` : placeholderNip,
+        pageWidth - margin,
+        signatureY + 32,
+        { align: "right" }
+      );
     }
 
-    doc.save(`laporan-stock-opname-${format(new Date(), "yyyy-MM-dd")}.pdf`);
+    doc.save(
+      `laporan-stock-opname-${format(new Date(), "yyyy-MM-dd")}.pdf`
+    );
   };
 
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+  // --- PERBAIKAN DI SINI ---
+  // Mengubah definisi kolom "Nama Obat" agar terhubung dengan filter
+  const columns: ColumnDef<ReportData>[] = [
+    {
+      accessorKey: "medicineName", // Kunci untuk filter
+      header: () => <div className="text-left">Nama Obat</div>,
+      cell: ({ row }) => (
+        <div className="text-left font-medium">
+          {row.original.medicineName}
+        </div>
+      ),
+    },
+    {
+      id: "keadaanBulanLaluGroup",
+      header: () => <div className="text-center">Keadaan Bulan Lalu</div>,
+      columns: [
+        {
+          header: () => <div className="text-center">Baik</div>,
+          accessorKey: "keadaanBulanLaluBaik",
+          cell: ({ row }) => (
+            <div className="text-center">{row.original.keadaanBulanLaluBaik}</div>
+          ),
+        },
+        {
+          header: () => <div className="text-center">Rusak</div>,
+          accessorKey: "keadaanBulanLaluRusak",
+          cell: ({ row }) => (
+            <div className="text-center">
+              {row.original.keadaanBulanLaluRusak}
+            </div>
+          ),
+        },
+        {
+          header: () => <div className="text-center font-bold">Jml</div>,
+          accessorKey: "keadaanBulanLaluJml",
+          cell: ({ row }) => (
+            <div className="text-center font-bold">
+              {row.original.keadaanBulanLaluJml}
+            </div>
+          ),
+        },
+      ],
+    },
+    {
+      id: "pemasukanGroup",
+      header: () => <div className="text-center">Pemasukan</div>,
+      columns: [
+        {
+          header: () => <div className="text-center">Baik</div>,
+          accessorKey: "pemasukanBaik",
+          cell: ({ row }) => (
+            <div className="text-center">{row.original.pemasukanBaik}</div>
+          ),
+        },
+        {
+          header: () => <div className="text-center">Rusak</div>,
+          accessorKey: "pemasukanRusak",
+          cell: ({ row }) => (
+            <div className="text-center">{row.original.pemasukanRusak}</div>
+          ),
+        },
+        {
+          header: () => <div className="text-center font-bold">Jml</div>,
+          accessorKey: "pemasukanJml",
+          cell: ({ row }) => (
+            <div className="text-center font-bold">
+              {row.original.pemasukanJml}
+            </div>
+          ),
+        },
+      ],
+    },
+    {
+      id: "pengeluaranGroup",
+      header: () => <div className="text-center">Pengeluaran</div>,
+      columns: [
+        {
+          header: () => <div className="text-center">Baik</div>,
+          accessorKey: "pengeluaranBaik",
+          cell: ({ row }) => (
+            <div className="text-center">{row.original.pengeluaranBaik}</div>
+          ),
+        },
+        {
+          header: () => <div className="text-center">Rusak</div>,
+          accessorKey: "pengeluaranRusak",
+          cell: ({ row }) => (
+            <div className="text-center">{row.original.pengeluaranRusak}</div>
+          ),
+        },
+        {
+          header: () => <div className="text-center font-bold">Jml</div>,
+          accessorKey: "pengeluaranJml",
+          cell: ({ row }) => (
+            <div className="text-center font-bold">
+              {row.original.pengeluaranJml}
+            </div>
+          ),
+        },
+      ],
+    },
+    {
+      id: "keadaanBulanLaporanGroup",
+      header: () => <div className="text-center">Keadaan Bulan Laporan</div>,
+      columns: [
+        {
+          header: () => <div className="text-center">Baik</div>,
+          accessorKey: "keadaanBulanLaporanBaik",
+          cell: ({ row }) => (
+            <div className="text-center">
+              {row.original.keadaanBulanLaporanBaik}
+            </div>
+          ),
+        },
+        {
+          header: () => <div className="text-center">Rusak</div>,
+          accessorKey: "keadaanBulanLaporanRusak",
+          cell: ({ row }) => (
+            <div className="text-center">
+              {row.original.keadaanBulanLaporanRusak}
+            </div>
+          ),
+        },
+        {
+          header: () => <div className="text-center font-bold">Jml</div>,
+          accessorKey: "keadaanBulanLaporanJml",
+          cell: ({ row }) => (
+            <div className="text-center font-bold">
+              {row.original.keadaanBulanLaporanJml}
+            </div>
+          ),
+        },
+      ],
+    },
+    {
+      id: "expireDateGroup",
+      header: "Expire Date",
+      accessorKey: "expireDate",
+      cell: ({ row }) => {
+        const date = row.original.expireDate;
+        if (date instanceof Date && !isNaN(date.getTime())) {
+          return (
+            <div className="text-center">
+              {format(date, "d LLL yyyy", { locale: id })}
+            </div>
+          );
+        }
+        return <div className="text-center">-</div>;
+      },
+    },
+  ];
 
-  if (loading && allOpnames.length === 0) {
-    return <div className="p-8"><Skeleton className="h-96 w-full" /></div>
-  }
+  const years = [2023, 2024, 2025];
 
   return (
     <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
       <div className="flex items-center justify-between space-y-2">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Laporan Stock Opname</h2>
-          <p className="text-muted-foreground">Pilih periode untuk melihat dan mencetak laporan stok opname.</p>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Laporan Stock Opname
+          </h2>
+          <p className="text-muted-foreground">
+            Pilih periode untuk melihat laporan stock opname historis.
+          </p>
         </div>
       </div>
 
@@ -347,18 +578,34 @@ export default function ReportPage() {
         <div className="flex flex-col space-y-2">
           <span className="text-sm font-medium">Periode Laporan</span>
           <div className="flex gap-2">
-            <Select onValueChange={(value) => setSelectedMonth(parseInt(value))} defaultValue={String(selectedMonth)}>
-              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Pilih Bulan" /></SelectTrigger>
+            <Select
+              onValueChange={(value) => setSelectedMonth(parseInt(value))}
+              defaultValue={String(selectedMonth)}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Pilih Bulan" />
+              </SelectTrigger>
               <SelectContent>
                 {Array.from({ length: 12 }).map((_, i) => (
-                  <SelectItem key={i} value={String(i)}>{format(new Date(2000, i), "LLLL", { locale: id })}</SelectItem>
+                  <SelectItem key={i} value={String(i)}>
+                    {format(new Date(2000, i), "LLLL", { locale: id })}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select onValueChange={(value) => setSelectedYear(parseInt(value))} defaultValue={String(selectedYear)}>
-              <SelectTrigger className="w-[100px]"><SelectValue placeholder="Pilih Tahun" /></SelectTrigger>
+            <Select
+              onValueChange={(value) => setSelectedYear(parseInt(value))}
+              defaultValue={String(selectedYear)}
+            >
+              <SelectTrigger className="w-[100px]">
+                <SelectValue placeholder="Pilih Tahun" />
+              </SelectTrigger>
               <SelectContent>
-                {years.map((year) => (<SelectItem key={year} value={String(year)}>{year}</SelectItem>))}
+                {years.map((year) => (
+                  <SelectItem key={year} value={String(year)}>
+                    {year}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -367,28 +614,55 @@ export default function ReportPage() {
           <span className="text-sm font-medium">Tanggal Cetak Laporan</span>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !printDate && "text-muted-foreground")}>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-[240px] justify-start text-left font-normal",
+                  !printDate && "text-muted-foreground"
+                )}
+              >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {printDate ? format(printDate, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                {printDate ? (
+                  format(printDate, "PPP", { locale: id })
+                ) : (
+                  <span>Pilih tanggal</span>
+                )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={printDate} onSelect={setPrintDate} initialFocus />
+              <Calendar
+                mode="single"
+                selected={printDate}
+                onSelect={setPrintDate}
+                captionLayout="dropdown-buttons"
+                fromYear={2020}
+                toYear={2030}
+                initialFocus
+              />
             </PopoverContent>
           </Popover>
         </div>
         <div className="flex items-end gap-2">
           <Button onClick={handleGenerateReport} disabled={loading}>
-            {loading ? "Memuat..." : "Tampilkan Laporan"}
+            {loading ? "Menghasilkan..." : "Tampilkan Laporan"}
           </Button>
-          <Button onClick={handlePrintReport} disabled={laporanData.length === 0} variant="outline">
-            <Printer className="mr-2 h-4 w-4" /> Cetak Laporan
+          <Button
+            onClick={handlePrintReport}
+            disabled={loading || reportData.length === 0}
+            variant="outline"
+          >
+            <Printer className="mr-2 h-4 w-4" />
+            Cetak Laporan
           </Button>
         </div>
       </div>
 
       <div className="pt-8">
-        <DataTable data={laporanData} columns={columns} filterColumn="medicineName" />
+        <DataTable
+          data={reportData}
+          columns={columns}
+          filterColumn="medicineName"
+        />
       </div>
     </div>
   );
