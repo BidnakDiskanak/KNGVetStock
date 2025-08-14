@@ -97,7 +97,6 @@ export async function deleteStockOpnameAction(id: string): Promise<ActionRespons
     }
 }
 
-// --- FUNGSI BARU UNTUK MENGAMBIL STOK TERAKHIR ---
 interface GetLastStockResponse {
     success: boolean;
     data?: {
@@ -107,11 +106,12 @@ interface GetLastStockResponse {
     error?: string;
 }
 
+// --- FUNGSI YANG DIPERBARUI ---
 export async function getLastStockAction(
     medicineName: string, 
     expireDate: Date, 
     user: User,
-    currentDocId?: string | null // ID dokumen saat ini (untuk mode edit)
+    currentDocId?: string | null
 ): Promise<GetLastStockResponse> {
     try {
         if (!user) throw new Error("User tidak terautentikasi.");
@@ -120,26 +120,34 @@ export async function getLastStockAction(
         const db = getFirestore(app);
         const stockOpnamesRef = db.collection("stock-opnames");
 
-        let q: Query = stockOpnamesRef
-            .where('medicineName', '==', medicineName)
-            .where('expireDate', '==', Timestamp.fromDate(expireDate));
+        // 1. Query disederhanakan: hanya mencari berdasarkan nama obat
+        let q: Query = stockOpnamesRef.where('medicineName', '==', medicineName);
 
-        if (user.role === 'admin') {
-            q = q.where('userRole', '==', 'admin');
-        } else {
+        if (user.role !== 'admin') {
             q = q.where('userId', '==', user.id);
+        } else {
+            q = q.where('userRole', '==', 'admin');
         }
-        
-        q = q.orderBy('opnameDate', 'desc');
 
         const querySnapshot = await q.get();
+        
+        // 2. Filter berdasarkan tanggal kadaluarsa dilakukan di sini (dalam kode)
+        const matchingDocs = querySnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(data => {
+                const docExpireDate = data.expireDate?.toDate();
+                return docExpireDate?.getTime() === expireDate.getTime();
+            });
 
-        const docs = currentDocId 
-            ? querySnapshot.docs.filter(doc => doc.id !== currentDocId)
-            : querySnapshot.docs;
+        const docsToConsider = currentDocId 
+            ? matchingDocs.filter(doc => doc.id !== currentDocId)
+            : matchingDocs;
 
-        if (docs.length > 0) {
-            const lastRecord = docs[0].data();
+        // 3. Urutkan data di sini
+        docsToConsider.sort((a, b) => b.opnameDate.toDate().getTime() - a.opnameDate.toDate().getTime());
+
+        if (docsToConsider.length > 0) {
+            const lastRecord = docsToConsider[0];
             return {
                 success: true,
                 data: {
@@ -150,10 +158,7 @@ export async function getLastStockAction(
         } else {
             return {
                 success: true,
-                data: {
-                    keadaanBulanLaporanBaik: 0,
-                    keadaanBulanLaporanRusak: 0,
-                }
+                data: { keadaanBulanLaporanBaik: 0, keadaanBulanLaporanRusak: 0 }
             };
         }
     } catch (error: any) {
