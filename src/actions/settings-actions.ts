@@ -19,11 +19,17 @@ const officialsSchema = z.object({
     nipKepalaBidang: z.string().optional(),
     kepalaUPTD: z.string().optional(),
     nipKepalaUPTD: z.string().optional(),
+    // --- KOLOM BARU UNTUK ALAMAT ---
+    namaUPTD: z.string().optional(),
+    jalan: z.string().optional(),
+    desa: z.string().optional(),
+    kecamatan: z.string().optional(),
+    kabupaten: z.string().optional(),
 });
 
 type OfficialsData = z.infer<typeof officialsSchema>;
 
-// Fungsi untuk MENGAMBIL data pejabat
+// Fungsi untuk MENGAMBIL data pejabat dan alamat
 export async function getOfficialsAction(user: User): Promise<ActionResponse> {
   try {
     if (!user) {
@@ -33,8 +39,6 @@ export async function getOfficialsAction(user: User): Promise<ActionResponse> {
     const app = getFirebaseAdminApp();
     const db = getFirestore(app);
 
-    // --- LOGIKA BARU: Tentukan dokumen berdasarkan peran & ID ---
-    // Admin membaca dari 'dinas', User UPTD membaca dari dokumen dengan ID mereka sendiri
     const docId = user.role === 'admin' ? 'dinas' : user.id;
 
     const settingsRef = db.collection("settings").doc(docId);
@@ -51,7 +55,7 @@ export async function getOfficialsAction(user: User): Promise<ActionResponse> {
   }
 }
 
-// Fungsi BARU untuk MENYIMPAN data pejabat
+// Fungsi untuk MENYIMPAN data pejabat dan alamat
 export async function updateOfficialsAction(formData: OfficialsData, user: User): Promise<Omit<ActionResponse, 'data'>> {
     try {
         if (!user) {
@@ -62,11 +66,9 @@ export async function updateOfficialsAction(formData: OfficialsData, user: User)
         const app = getFirebaseAdminApp();
         const db = getFirestore(app);
 
-        // --- LOGIKA BARU: Tentukan dokumen berdasarkan peran & ID ---
         const docId = user.role === 'admin' ? 'dinas' : user.id;
 
         const settingsRef = db.collection("settings").doc(docId);
-        // Gunakan 'set' dengan 'merge: true' untuk membuat atau memperbarui dokumen
         await settingsRef.set(validatedData, { merge: true });
 
         return { success: true };
