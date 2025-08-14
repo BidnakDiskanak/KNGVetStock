@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react"; // <-- PERBAIKAN DI SINI
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -17,7 +17,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-// --- IMPOR FUNGSI BARU ---
 import { createStockOpnameAction, updateStockOpnameAction, getLastStockAction } from "@/actions/stock-opname-actions";
 import type { StockOpname, User } from "@/lib/types";
 import { useUser } from "@/contexts/UserProvider";
@@ -28,7 +27,7 @@ const formSchema = z.object({
   medicineName: z.string().min(2, "Nama obat minimal 2 karakter."),
   jenisObat: z.string().optional(),
   satuan: z.string().optional(),
-  expireDate: z.date({ required_error: "Tanggal kadaluarsa wajib diisi." }), // Dibuat wajib
+  expireDate: z.date({ required_error: "Tanggal kadaluarsa wajib diisi." }),
   asalBarang: z.string().optional(),
   keadaanBulanLaluBaik: z.coerce.number().min(0).default(0),
   keadaanBulanLaluRusak: z.coerce.number().min(0).default(0),
@@ -58,13 +57,10 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
     defaultValues: {},
   });
 
-  // Mengawasi perubahan pada field
   const watchedFields = useWatch({ control: form.control });
   const debouncedMedicineName = useDebounce(watchedFields.medicineName, 500);
 
-  // --- EFEK UNTUK MENGAMBIL STOK TERAKHIR SECARA OTOMATIS ---
   useEffect(() => {
-    // Hanya berjalan jika mode Tambah Data, dan nama obat serta ED sudah diisi
     if (!isEditMode && debouncedMedicineName && watchedFields.expireDate && user) {
         const fetchLastStock = async () => {
             setIsFetchingLastStock(true);
@@ -77,7 +73,6 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
                     description: `Stok terakhir untuk ${debouncedMedicineName} berhasil dimuat.`,
                 });
             } else {
-                // Jika tidak ada, set ke 0
                 form.setValue('keadaanBulanLaluBaik', 0);
                 form.setValue('keadaanBulanLaluRusak', 0);
             }
@@ -87,8 +82,6 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
     }
   }, [debouncedMedicineName, watchedFields.expireDate, isEditMode, user, form, toast]);
 
-
-  // --- EFEK UNTUK MERESET FORM ---
   useEffect(() => {
     if (opnameData) {
         form.reset({
@@ -112,9 +105,8 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
             expireDate: undefined,
         });
     }
-  }, [opnameData, form, isOpen]); // isOpen ditambahkan agar form reset saat sheet ditutup lalu dibuka lagi
+  }, [opnameData, form, isOpen]);
 
-  // --- KALKULASI OTOMATIS ---
   const calculations = useMemo(() => {
     const keadaanBulanLaluJml = (watchedFields.keadaanBulanLaluBaik || 0) + (watchedFields.keadaanBulanLaluRusak || 0);
     const pemasukanJml = (watchedFields.pemasukanBaik || 0) + (watchedFields.pemasukanRusak || 0);
@@ -183,15 +175,12 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
                         </div>
                         <Separator />
                         
-                        {/* --- BAGIAN KALKULASI --- */}
                         <div className="grid grid-cols-4 gap-x-4 gap-y-2 items-end">
-                            {/* Headers */}
                             <div className="font-medium">Kondisi</div>
                             <div className="font-medium text-center">Baik</div>
                             <div className="font-medium text-center">Rusak</div>
                             <div className="font-medium text-center text-blue-600">Jumlah</div>
 
-                            {/* Keadaan Bulan Lalu */}
                             <div className="font-medium flex items-center">
                                 Keadaan Bulan Lalu
                                 {isFetchingLastStock && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
@@ -200,22 +189,18 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
                             <FormField control={form.control} name="keadaanBulanLaluRusak" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" readOnly={!isEditMode} /></FormControl></FormItem>)}/>
                             <Input type="number" value={calculations.keadaanBulanLaluJml} className="text-center font-bold text-blue-600" readOnly />
 
-                            {/* Pemasukan */}
                             <div className="font-medium">Pemasukan</div>
                             <FormField control={form.control} name="pemasukanBaik" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" /></FormControl></FormItem>)}/>
                             <FormField control={form.control} name="pemasukanRusak" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" /></FormControl></FormItem>)}/>
                             <Input type="number" value={calculations.pemasukanJml} className="text-center font-bold text-blue-600" readOnly />
 
-                            {/* Pengeluaran */}
                             <div className="font-medium">Pengeluaran</div>
                             <FormField control={form.control} name="pengeluaranBaik" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" /></FormControl></FormItem>)}/>
                             <FormField control={form.control} name="pengeluaranRusak" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" /></FormControl></FormItem>)}/>
                             <Input type="number" value={calculations.pengeluaranJml} className="text-center font-bold text-blue-600" readOnly />
                             
-                            {/* Separator */}
                             <div className="col-span-4"><Separator className="my-2"/></div>
 
-                             {/* Keadaan Bulan Laporan */}
                             <div className="font-medium text-green-600">Keadaan s/d Bulan Laporan</div>
                             <Input type="number" value={calculations.keadaanBulanLaporanBaik} className="text-center font-bold text-green-600" readOnly />
                             <Input type="number" value={calculations.keadaanBulanLaporanRusak} className="text-center font-bold text-green-600" readOnly />
