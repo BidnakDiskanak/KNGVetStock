@@ -159,7 +159,7 @@ export default function ReportPage() {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
 
-    // --- PERBAIKAN KOP SURAT ---
+    // Bagian header ini tidak diubah, sesuai permintaan.
     if (user?.role === "admin") {
       doc.text(
         officials.namaDinas || "DINAS PERIKANAN DAN PETERNAKAN",
@@ -189,7 +189,6 @@ export default function ReportPage() {
         { align: "center" }
       );
     }
-    // --- AKHIR PERBAIKAN KOP SURAT ---
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
@@ -257,11 +256,9 @@ export default function ReportPage() {
     const placeholderName = "(.........................................)";
     const placeholderNip = "NIP. .....................................";
     
-    // --- PERBAIKAN TANGGAL & LOKASI TANDA TANGAN ---
     const locationAndDateText = user?.role === 'admin'
       ? `${officials.kabupaten || 'Kabupaten'}, ${signatureDate}`
       : `${officials.kecamatan || 'Kecamatan'}, ${signatureDate}`;
-    // --- AKHIR PERBAIKAN ---
 
     if (user?.role === "admin") {
       doc.text("Mengetahui,", margin, signatureY);
@@ -279,8 +276,10 @@ export default function ReportPage() {
       doc.text(user?.name || placeholderName, pageWidth - margin, signatureY + 28, { align: "right" });
       doc.text(user?.nip ? `NIP. ${user.nip}` : placeholderNip, pageWidth - margin, signatureY + 32, { align: "right" });
     } else {
+      // --- PERBAIKAN TANDA TANGAN UPTD ---
       doc.text("Mengetahui,", margin, signatureY);
-      doc.text("Kepala UPTD", margin, signatureY + 4);
+      // Menggunakan nama UPTD dari pengaturan
+      doc.text(`Kepala ${officials.namaUPTD || user?.location?.toUpperCase() || 'UPTD'}`, margin, signatureY + 4);
       doc.text(officials.kepalaUPTD || placeholderName, margin, signatureY + 28);
       doc.text(officials.nipKepalaUPTD ? `NIP. ${officials.nipKepalaUPTD}` : placeholderNip, margin, signatureY + 32);
 
@@ -288,6 +287,7 @@ export default function ReportPage() {
       doc.text("Yang Melaporkan,", pageWidth - margin, signatureY + 4, { align: "right" });
       doc.text(user?.name || placeholderName, pageWidth - margin, signatureY + 28, { align: "right" });
       doc.text(user?.nip ? `NIP. ${user.nip}` : placeholderNip, pageWidth - margin, signatureY + 32, { align: "right" });
+      // --- AKHIR PERBAIKAN ---
     }
 
     doc.save(`laporan-stock-opname-${format(new Date(), "yyyy-MM-dd")}.pdf`);
