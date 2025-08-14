@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react"; // <-- PERBAIKAN DI SINI
+import React, { useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -108,12 +108,20 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
   }, [opnameData, form, isOpen]);
 
   const calculations = useMemo(() => {
-    const keadaanBulanLaluJml = (watchedFields.keadaanBulanLaluBaik || 0) + (watchedFields.keadaanBulanLaluRusak || 0);
-    const pemasukanJml = (watchedFields.pemasukanBaik || 0) + (watchedFields.pemasukanRusak || 0);
-    const pengeluaranJml = (watchedFields.pengeluaranBaik || 0) + (watchedFields.pengeluaranRusak || 0);
+    // --- PERBAIKAN DI SINI: Mengubah nilai menjadi Angka sebelum dijumlahkan ---
+    const keadaanBulanLaluBaik = Number(watchedFields.keadaanBulanLaluBaik) || 0;
+    const keadaanBulanLaluRusak = Number(watchedFields.keadaanBulanLaluRusak) || 0;
+    const pemasukanBaik = Number(watchedFields.pemasukanBaik) || 0;
+    const pemasukanRusak = Number(watchedFields.pemasukanRusak) || 0;
+    const pengeluaranBaik = Number(watchedFields.pengeluaranBaik) || 0;
+    const pengeluaranRusak = Number(watchedFields.pengeluaranRusak) || 0;
+
+    const keadaanBulanLaluJml = keadaanBulanLaluBaik + keadaanBulanLaluRusak;
+    const pemasukanJml = pemasukanBaik + pemasukanRusak;
+    const pengeluaranJml = pengeluaranBaik + pengeluaranRusak;
     
-    const keadaanBulanLaporanBaik = (watchedFields.keadaanBulanLaluBaik || 0) + (watchedFields.pemasukanBaik || 0) - (watchedFields.pengeluaranBaik || 0);
-    const keadaanBulanLaporanRusak = (watchedFields.keadaanBulanLaluRusak || 0) + (watchedFields.pemasukanRusak || 0) - (watchedFields.pengeluaranRusak || 0);
+    const keadaanBulanLaporanBaik = keadaanBulanLaluBaik + pemasukanBaik - pengeluaranBaik;
+    const keadaanBulanLaporanRusak = keadaanBulanLaluRusak + pemasukanRusak - pengeluaranRusak;
     const keadaanBulanLaporanJml = keadaanBulanLaporanBaik + keadaanBulanLaporanRusak;
 
     return {
