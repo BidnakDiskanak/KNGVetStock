@@ -1,19 +1,206 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { StockOpname } from '@/lib/types';
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
 import { useUser } from '@/contexts/UserProvider';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { DataTable } from './components/data-table-laporan'; // Anda mungkin perlu membuat komponen data-table khusus untuk laporan
-import { getLaporanColumns } from './components/columns-laporan'; // Dan juga komponen columns khusus untuk laporan
 
-// Komponen ini adalah contoh. Anda perlu menyesuaikan 'DataTable' dan 'Columns' sesuai kebutuhan laporan.
+// --- IMPORTS BARU UNTUK DATA TABLE ---
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  SortingState,
+  useReactTable,
+} from "@tanstack/react-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowUpDown } from 'lucide-react';
+// --- AKHIR IMPORTS BARU ---
+
+
+// --- KOMPONEN COLUMNS DIBUAT DI SINI ---
+export const getLaporanColumns = (): ColumnDef<StockOpname>[] => [
+    {
+      accessorKey: "medicineName",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Nama Obat
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => <div className="pl-4">{row.getValue("medicineName")}</div>,
+    },
+    {
+      accessorKey: "stockSystem",
+      header: () => <div className="text-center">Stok Sistem</div>,
+      cell: ({ row }) => <div className="text-center">{row.getValue("stockSystem")}</div>,
+    },
+    {
+      accessorKey: "stockReal",
+      header: () => <div className="text-center">Stok Fisik</div>,
+      cell: ({ row }) => <div className="text-center">{row.getValue("stockReal")}</div>,
+    },
+    {
+      accessorKey: "difference",
+      header: () => <div className="text-center">Selisih</div>,
+      cell: ({ row }) => {
+        const difference = row.getValue("difference") as number;
+        const color = difference < 0 ? "text-red-500" : "text-green-500";
+        return <div className={`text-center font-medium ${color}`}>{difference}</div>
+      },
+    },
+    {
+      accessorKey: "unit",
+      header: "Satuan",
+    },
+    {
+      accessorKey: "opnameDate",
+      header: "Tgl Opname",
+      cell: ({ row }) => {
+        const date = row.getValue("opnameDate") as Date;
+        return <span>{format(date, "d MMM yyyy", { locale: id })}</span>;
+      },
+    },
+    {
+      accessorKey: "expireDate",
+      header: "Tgl Kedaluwarsa",
+      cell: ({ row }) => {
+        const date = row.getValue("expireDate") as Date | undefined;
+        return date ? <span>{format(date, "d MMM yyyy", { locale: id })}</span> : <span className="text-muted-foreground">-</span>;
+      },
+    }
+];
+
+// --- KOMPONEN DATA TABLE DIBUAT DI SINI ---
+interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+  filterColumn: string;
+}
+
+function DataTable<TData, TValue>({
+  columns,
+  data,
+  filterColumn,
+}: DataTableProps<TData, TValue>) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    state: {
+      sorting,
+    },
+  });
+
+  return (
+    <div>
+      <div className="flex items-center py-4">
+        <Input
+          placeholder={`Cari nama obat...`}
+          value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""}
+          onChange={(event) =>
+            table.getColumn(filterColumn)?.setFilterValue(event.target.value)
+          }
+          className="max-w-sm"
+        />
+      </div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  Tidak ada data.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-end space-x-2 py-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          Sebelumnya
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          Berikutnya
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
+// --- KOMPONEN UTAMA LAPORAN PAGE ---
 export default function LaporanPage() {
   const [laporanData, setLaporanData] = useState<StockOpname[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,8 +213,6 @@ export default function LaporanPage() {
         return;
     };
     
-    // Untuk laporan, admin biasanya bisa melihat semua data,
-    // jadi kita tidak memfilter berdasarkan userId atau userRole kecuali ada kebutuhan khusus.
     const q = query(collection(db, "stock-opnames"));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -50,12 +235,9 @@ export default function LaporanPage() {
           } as StockOpname);
       });
 
-      // --- LOGIKA FILTER DATA TERBARU DITERAPKAN DI SINI ---
-      // 1. Kelompokkan semua data berdasarkan batch unik (nama obat + tanggal ED)
       const recordsByBatch: { [key: string]: StockOpname[] } = {};
       for (const record of opnamesData) {
           const expireDateString = record.expireDate ? record.expireDate.toISOString() : 'no-expiry';
-          // Kunci unik menggunakan nama obat dan tanggal kadaluwarsa
           const key = `${record.medicineName}|${expireDateString}`;
           if (!recordsByBatch[key]) {
               recordsByBatch[key] = [];
@@ -63,17 +245,13 @@ export default function LaporanPage() {
           recordsByBatch[key].push(record);
       }
 
-      // 2. Dari setiap kelompok, ambil hanya data yang paling baru berdasarkan tanggal opname
       const latestRecords = Object.values(recordsByBatch).map(records => {
           return records.sort((a, b) => b.opnameDate.getTime() - a.opnameDate.getTime())[0];
       });
       
-      // 3. Urutkan hasil akhir berdasarkan tanggal opname terbaru agar yang paling baru muncul di atas
       latestRecords.sort((a, b) => b.opnameDate.getTime() - a.opnameDate.getTime());
 
       setLaporanData(latestRecords);
-      // --- AKHIR LOGIKA FILTER ---
-
       setLoading(false);
     }, (error) => {
         console.error("Gagal mengambil data laporan:", error);
@@ -89,7 +267,6 @@ export default function LaporanPage() {
     
   }, [user, toast]);
   
-  // Kolom untuk tabel laporan, Anda bisa menyesuaikannya
   const columns = useMemo(() => getLaporanColumns(), []);
 
   if (loading) {
