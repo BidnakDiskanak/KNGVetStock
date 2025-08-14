@@ -30,6 +30,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 import type { ReportData, Officials, User } from "@/lib/types";
 
+// Fungsi pengurutan asli Anda, tetap dipertahankan.
 function urutkanDataLaporan(data: ReportData[]): ReportData[] {
   const dataToSort = [...data];
 
@@ -107,8 +108,35 @@ export default function ReportPage() {
     const result = await getReportDataAction({ endDate }, user as User);
 
     if (result.success && result.data) {
-      setReportData(result.data);
-      if (result.data.length === 0) {
+      // --- PERBAIKAN DIMULAI DI SINI ---
+      // Logika untuk memfilter hanya data terbaru untuk setiap batch obat.
+      
+      const latestDataMap = new Map<string, ReportData>();
+
+      for (const item of result.data) {
+        // Membuat kunci unik untuk setiap batch (nama obat + tanggal kadaluwarsa)
+        const key = `${item.medicineName}|${item.expireDate?.toISOString()}`;
+
+        // Asumsi: `getReportDataAction` mengembalikan data yang sudah terurut berdasarkan tanggal transaksi,
+        // sehingga data yang terakhir dalam iterasi adalah yang paling baru.
+        // Jika tidak, kita harus membandingkan tanggalnya. Kita akan anggap `opnameDate` ada di dalam `item`.
+        const existingItem = latestDataMap.get(key);
+        
+        // Simpan item jika belum ada, atau jika item saat ini lebih baru dari yang sudah ada.
+        // Kita asumsikan `item.opnameDate` ada untuk perbandingan.
+        if (!existingItem || (item.opnameDate && existingItem.opnameDate && item.opnameDate > existingItem.opnameDate)) {
+            latestDataMap.set(key, item);
+        }
+      }
+
+      const filteredData = Array.from(latestDataMap.values());
+      // --- PERBAIKAN SELESAI ---
+
+      // Gunakan data yang sudah difilter untuk diurutkan dan ditampilkan
+      const dataUrut = urutkanDataLaporan(filteredData);
+      setReportData(dataUrut);
+
+      if (dataUrut.length === 0) {
         toast({
           title: "Informasi",
           description: "Tidak ada data stock opname pada periode yang dipilih.",
@@ -407,8 +435,7 @@ export default function ReportPage() {
     );
   };
 
-  // --- PERBAIKAN DI SINI ---
-  // Mengubah definisi kolom "Nama Obat" agar terhubung dengan filter
+  // Kolom untuk tabel di UI, menggunakan format dari kode asli Anda.
   const columns: ColumnDef<ReportData>[] = [
     {
       accessorKey: "medicineName", // Kunci untuk filter
