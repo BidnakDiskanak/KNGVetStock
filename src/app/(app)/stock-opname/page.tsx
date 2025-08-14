@@ -36,9 +36,9 @@ export default function StockOpnamePage() {
     const baseQuery = collection(db, "stock-opnames");
 
     if (user.role !== 'admin') {
-        q = query(baseQuery, where("userId", "==", user.id), orderBy("opnameDate", "desc"));
+        q = query(baseQuery, where("userId", "==", user.id));
     } else {
-        q = query(baseQuery, where("userRole", "==", "admin"), orderBy("opnameDate", "desc"));
+        q = query(baseQuery, where("userRole", "==", "admin"));
     }
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -60,7 +60,30 @@ export default function StockOpnamePage() {
               expireDate: expireDate && !isNaN(expireDate.getTime()) ? expireDate : undefined,
           } as StockOpname);
       });
-      setStockOpnames(opnamesData);
+
+      // --- PERBAIKAN LOGIKA DI SINI ---
+      // 1. Kelompokkan semua data berdasarkan batch unik (nama obat + tanggal ED)
+      const recordsByBatch: { [key: string]: StockOpname[] } = {};
+      for (const record of opnamesData) {
+          const expireDateString = record.expireDate ? record.expireDate.toISOString() : 'no-expiry';
+          const key = `${record.medicineName}|${expireDateString}`;
+          if (!recordsByBatch[key]) {
+              recordsByBatch[key] = [];
+          }
+          recordsByBatch[key].push(record);
+      }
+
+      // 2. Dari setiap kelompok, ambil hanya data yang paling baru
+      const latestRecords = Object.values(recordsByBatch).map(records => {
+          return records.sort((a, b) => b.opnameDate.getTime() - a.opnameDate.getTime())[0];
+      });
+      
+      // 3. Urutkan hasil akhir berdasarkan tanggal opname terbaru
+      latestRecords.sort((a, b) => b.opnameDate.getTime() - a.opnameDate.getTime());
+
+      setStockOpnames(latestRecords);
+      // --- AKHIR PERBAIKAN ---
+
       setLoading(false);
     }, (error) => {
         console.error("Gagal mengambil data stock opname:", error);
