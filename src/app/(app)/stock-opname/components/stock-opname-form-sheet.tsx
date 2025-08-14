@@ -58,7 +58,8 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
   });
 
   const watchedFields = useWatch({ control: form.control });
-  const debouncedMedicineName = useDebounce(watchedFields.medicineName, 500);
+  // --- PERUBAHAN DI SINI ---
+  const debouncedMedicineName = useDebounce(watchedFields.medicineName, 300); // Waktu tunda dikurangi
 
   useEffect(() => {
     if (!isEditMode && debouncedMedicineName && watchedFields.expireDate && user) {
@@ -108,7 +109,6 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
   }, [opnameData, form, isOpen]);
 
   const calculations = useMemo(() => {
-    // --- PERBAIKAN DI SINI: Mengubah nilai menjadi Angka sebelum dijumlahkan ---
     const keadaanBulanLaluBaik = Number(watchedFields.keadaanBulanLaluBaik) || 0;
     const keadaanBulanLaluRusak = Number(watchedFields.keadaanBulanLaluRusak) || 0;
     const pemasukanBaik = Number(watchedFields.pemasukanBaik) || 0;
