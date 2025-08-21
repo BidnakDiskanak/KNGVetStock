@@ -11,6 +11,7 @@ import { auth as clientAuth } from "@/lib/firebase";
 type ActionResponse = {
     success: boolean;
     error?: string;
+    deletedCount?: number; // Menambahkan properti untuk hasil cleanup
 }
 
 // --- FUNGSI ASLI ANDA (TETAP ADA) ---
@@ -122,4 +123,56 @@ export async function changePasswordAction(currentPassword: string, newPassword:
     }
     return { success: false, error: "Terjadi kesalahan saat mengubah password." };
   }
+}
+
+// --- FUNGSI BARU: Membersihkan Data Stok Yatim ---
+/**
+ * Menghapus data stok opname yang `userId`-nya sudah tidak ada di Firebase Auth.
+ * Fungsi ini sebaiknya hanya bisa diakses oleh admin.
+ */
+export async function cleanupOrphanedStockDataAction(): Promise<ActionResponse> {
+    try {
+        const app = getFirebaseAdminApp();
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const stockOpnamesRef = db.collection("stock-opnames");
+        const allStockSnapshot = await stockOpnamesRef.get();
+
+        if (allStockSnapshot.empty) {
+            return { success: true, deletedCount: 0 };
+        }
+
+        const batch = db.batch();
+        let deletedCount = 0;
+        
+        // Kita perlu memeriksa setiap dokumen satu per satu
+        for (const doc of allStockSnapshot.docs) {
+            const data = doc.data();
+            const userId = data.userId;
+
+            if (!userId) continue; // Lewati jika tidak ada userId
+
+            try {
+                // Coba ambil data pengguna dari Auth
+                await auth.getUser(userId);
+            } catch (error: any) {
+                // Jika error 'user-not-found', berarti pengguna sudah dihapus
+                if (error.code === 'auth/user-not-found') {
+                    batch.delete(doc.ref); // Tambahkan ke batch delete
+                    deletedCount++;
+                }
+            }
+        }
+
+        // Jalankan batch delete jika ada data yang perlu dihapus
+        if (deletedCount > 0) {
+            await batch.commit();
+        }
+
+        return { success: true, deletedCount };
+    } catch (error: any) {
+        console.error("Error cleaning up orphaned stock data:", error);
+        return { success: false, error: "Gagal membersihkan data stok." };
+    }
 }
