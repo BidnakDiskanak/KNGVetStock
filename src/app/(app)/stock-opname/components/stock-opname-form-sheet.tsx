@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -50,7 +50,9 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
   const { toast } = useToast();
   const { user } = useUser();
   const isEditMode = !!opnameData;
-  const [isFetchingLastStock, setIsFetchingLastStock] = React.useState(false);
+  const [isFetchingLastStock, setIsFetchingLastStock] = useState(false);
+  // --- PERBAIKAN 1: State untuk melacak notifikasi ---
+  const [hasNotified, setHasNotified] = useState(false);
 
   const form = useForm<StockOpnameFormValues>({
     resolver: zodResolver(formSchema),
@@ -58,22 +60,30 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
   });
 
   const watchedFields = useWatch({ control: form.control });
-  // --- PERUBAHAN DI SINI ---
-  const debouncedMedicineName = useDebounce(watchedFields.medicineName, 300); // Waktu tunda dikurangi
+  const debouncedMedicineName = useDebounce(watchedFields.medicineName, 500); // Jeda 500ms agar tidak terlalu sering
+  const debouncedExpireDate = useDebounce(watchedFields.expireDate, 500);
 
   useEffect(() => {
-    if (!isEditMode && debouncedMedicineName && watchedFields.expireDate && user) {
+    // --- PERBAIKAN 2: Logika pengecekan diubah ---
+    // Pengecekan hanya berjalan jika:
+    // 1. Bukan mode edit
+    // 2. Nama obat dan tanggal ED sudah diisi (setelah debounce)
+    // 3. Notifikasi untuk batch ini belum pernah muncul
+    if (!isEditMode && debouncedMedicineName && debouncedExpireDate && user && !hasNotified) {
         const fetchLastStock = async () => {
             setIsFetchingLastStock(true);
-            const result = await getLastStockAction(debouncedMedicineName, watchedFields.expireDate!, user as User);
+            const result = await getLastStockAction(debouncedMedicineName, debouncedExpireDate!, user as User);
             if (result.success && result.data) {
                 form.setValue('keadaanBulanLaluBaik', result.data.keadaanBulanLaporanBaik);
                 form.setValue('keadaanBulanLaluRusak', result.data.keadaanBulanLaporanRusak);
-                 toast({
+                toast({
                     title: "Stok Bulan Lalu Ditemukan",
                     description: `Stok terakhir untuk ${debouncedMedicineName} berhasil dimuat.`,
                 });
+                // Tandai bahwa notifikasi sudah muncul agar tidak berulang
+                setHasNotified(true); 
             } else {
+                // Jika tidak ditemukan, pastikan stok bulan lalu kembali ke 0
                 form.setValue('keadaanBulanLaluBaik', 0);
                 form.setValue('keadaanBulanLaluRusak', 0);
             }
@@ -81,7 +91,7 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
         };
         fetchLastStock();
     }
-  }, [debouncedMedicineName, watchedFields.expireDate, isEditMode, user, form, toast]);
+  }, [debouncedMedicineName, debouncedExpireDate, isEditMode, user, form, toast, hasNotified]);
 
   useEffect(() => {
     if (opnameData) {
@@ -106,6 +116,8 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
             expireDate: undefined,
         });
     }
+    // --- PERBAIKAN 3: Reset status notifikasi saat form dibuka/di-reset ---
+    setHasNotified(false);
   }, [opnameData, form, isOpen]);
 
   const calculations = useMemo(() => {
@@ -193,8 +205,8 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
                                 Keadaan Bulan Lalu
                                 {isFetchingLastStock && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
                             </div>
-                            <FormField control={form.control} name="keadaanBulanLaluBaik" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" readOnly={!isEditMode} /></FormControl></FormItem>)}/>
-                            <FormField control={form.control} name="keadaanBulanLaluRusak" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" readOnly={!isEditMode} /></FormControl></FormItem>)}/>
+                            <FormField control={form.control} name="keadaanBulanLaluBaik" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" readOnly /></FormControl></FormItem>)}/>
+                            <FormField control={form.control} name="keadaanBulanLaluRusak" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" readOnly /></FormControl></FormItem>)}/>
                             <Input type="number" value={calculations.keadaanBulanLaluJml} className="text-center font-bold text-blue-600" readOnly />
 
                             <div className="font-medium">Pemasukan</div>
@@ -223,7 +235,8 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
                             <FormField control={form.control} name="asalBarang" render={({ field }) => (<FormItem><FormLabel>Asal Barang</FormLabel><FormControl><Input placeholder="Pusat, Provinsi, dll" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                         </div>
                         <FormField control={form.control} name="keterangan" render={({ field }) => (<FormItem><FormLabel>Keterangan</FormLabel><FormControl><Input placeholder="Catatan tambahan" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                        <Button type="submit" disabled={form.formState.isSubmitting}>
+                        <Button type="submit" disabled={form.formState.isSubmitting || isFetchingLastStock}>
+                            {isFetchingLastStock ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             {form.formState.isSubmitting ? 'Menyimpan...' : 'Simpan Data'}
                         </Button>
                     </form>
