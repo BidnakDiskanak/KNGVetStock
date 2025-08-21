@@ -11,15 +11,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/contexts/UserProvider";
 import { getOfficialsAction, updateOfficialsAction } from "@/actions/settings-actions";
-// --- AKSI BARU UNTUK PROFIL PENGGUNA ---
-import { updateUserProfileAction, changePasswordAction } from "@/actions/user-actions";
+// --- IMPOR FUNGSI BARU ---
+import { updateUserProfileAction, changePasswordAction, cleanupOrphanedStockDataAction } from "@/actions/user-actions";
 import type { User } from "@/lib/types";
-import { Separator } from "@/components/ui/separator";
 
-// Skema untuk pengaturan umum (alamat & pejabat)
+// Skema untuk pengaturan umum
 const settingsSchema = z.object({
     kepalaDinas: z.string().optional(),
     nipKepalaDinas: z.string().optional(),
@@ -34,20 +34,13 @@ const settingsSchema = z.object({
     kabupaten: z.string().optional(),
 });
 
-// --- SKEMA BARU UNTUK PENGATURAN AKUN UPTD ---
-const profileFormSchema = z.object({
-  name: z.string().min(2, { message: "Nama minimal 2 karakter." }),
-  nip: z.string().optional(),
-});
-
+// Skema untuk profil & password
+const profileFormSchema = z.object({ name: z.string().min(2, { message: "Nama minimal 2 karakter." }), nip: z.string().optional() });
 const passwordFormSchema = z.object({
   currentPassword: z.string().min(6, { message: "Password saat ini minimal 6 karakter." }),
   newPassword: z.string().min(6, { message: "Password baru minimal 6 karakter." }),
   confirmPassword: z.string().min(6, { message: "Konfirmasi password minimal 6 karakter." }),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Password baru dan konfirmasi tidak cocok.",
-  path: ["confirmPassword"],
-});
+}).refine((data) => data.newPassword === data.confirmPassword, { message: "Password baru dan konfirmasi tidak cocok.", path: ["confirmPassword"] });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
 
@@ -55,37 +48,21 @@ export default function SettingsPage() {
     const { user } = useUser();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
+    // --- STATE BARU UNTUK CLEANUP ---
+    const [isCleaning, setIsCleaning] = useState(false);
 
-    // Form untuk pengaturan umum
-    const settingsForm = useForm<SettingsFormValues>({
-        resolver: zodResolver(settingsSchema),
-        defaultValues: {},
-    });
-
-    // --- FORM BARU UNTUK PENGATURAN AKUN UPTD ---
-    const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
-    const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
-
-    const profileForm = useForm<z.infer<typeof profileFormSchema>>({
-        resolver: zodResolver(profileFormSchema),
-        defaultValues: { name: "", nip: "" },
-    });
-
-    const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
-        resolver: zodResolver(passwordFormSchema),
-        defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
-    });
+    const settingsForm = useForm<SettingsFormValues>({ resolver: zodResolver(settingsSchema), defaultValues: {} });
+    const profileForm = useForm<z.infer<typeof profileFormSchema>>({ resolver: zodResolver(profileFormSchema), defaultValues: { name: "", nip: "" } });
+    const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({ resolver: zodResolver(passwordFormSchema), defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" } });
 
     useEffect(() => {
         async function loadData() {
             if (user) {
                 setLoading(true);
-                // Memuat data pengaturan umum
                 const result = await getOfficialsAction(user as User);
                 if (result.success && result.data) {
                     settingsForm.reset(result.data);
                 }
-                // Memuat data profil pengguna untuk form akun
                 profileForm.reset({ name: user.name || "", nip: user.nip || "" });
                 setLoading(false);
             }
@@ -93,7 +70,6 @@ export default function SettingsPage() {
         loadData();
     }, [user, settingsForm, profileForm]);
 
-    // Handler untuk submit pengaturan umum
     async function onSettingsSubmit(values: SettingsFormValues) {
         if (!user) return;
         const result = await updateOfficialsAction(values, user as User);
@@ -103,8 +79,11 @@ export default function SettingsPage() {
             toast({ title: "Gagal", description: result.error, variant: "destructive" });
         }
     }
+    
+    // ... (Fungsi onProfileSubmit dan onPasswordSubmit tetap sama)
+    const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
+    const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
 
-    // --- HANDLER BARU UNTUK SUBMIT PROFIL & PASSWORD ---
     async function onProfileSubmit(values: z.infer<typeof profileFormSchema>) {
         if (!user) return;
         setIsProfileSubmitting(true);
@@ -128,18 +107,40 @@ export default function SettingsPage() {
         }
         setIsPasswordSubmitting(false);
     }
+    // --- AKHIR FUNGSI LAMA ---
+
+    // --- HANDLER BARU UNTUK CLEANUP ---
+    const handleCleanup = async () => {
+        if (!confirm("Anda yakin ingin menghapus semua data stok yang tidak memiliki pengguna? Tindakan ini tidak dapat diurungkan.")) {
+            return;
+        }
+        setIsCleaning(true);
+        const result = await cleanupOrphanedStockDataAction();
+        if (result.success) {
+            toast({
+                title: "Pembersihan Selesai",
+                description: `${result.deletedCount} data stok yatim berhasil dihapus.`,
+            });
+        } else {
+            toast({
+                title: "Gagal Membersihkan Data",
+                description: result.error,
+                variant: "destructive",
+            });
+        }
+        setIsCleaning(false);
+    };
 
     if (loading) {
-        return <Skeleton className="h-screen w-full p-2 md:p-8" />;
+        return <Skeleton className="h-96 w-full p-2 md:p-8" />;
     }
 
     return (
         <div className="space-y-8 p-2 md:p-8">
             <h2 className="text-3xl font-bold tracking-tight">Pengaturan</h2>
-            
-            {/* --- FORM PENGATURAN UMUM (Alamat & Pejabat) --- */}
             <Form {...settingsForm}>
                 <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-8">
+                    {/* --- KARTU ALAMAT --- */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Data Alamat</CardTitle>
@@ -155,6 +156,8 @@ export default function SettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* --- KARTU PEJABAT --- */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Data Pejabat Penanda Tangan</CardTitle>
@@ -180,52 +183,62 @@ export default function SettingsPage() {
                             )}
                         </CardContent>
                     </Card>
+                    
                     <Button type="submit" disabled={settingsForm.formState.isSubmitting}>
                         {settingsForm.formState.isSubmitting ? 'Menyimpan...' : 'Simpan Pengaturan Umum'}
                     </Button>
                 </form>
             </Form>
 
-            {/* --- BAGIAN BARU: PENGATURAN AKUN KHUSUS UPTD --- */}
+            {/* ... (Kode untuk pengaturan akun UPTD tetap sama) ... */}
             {user?.role !== 'admin' && (
                 <div className="space-y-8 pt-8">
                     <Separator />
                     <h3 className="text-2xl font-bold tracking-tight">Pengaturan Akun Operator</h3>
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Profil Operator</CardTitle>
-                            <CardDescription>Ubah nama dan NIP Anda yang terdaftar.</CardDescription>
-                        </CardHeader>
+                        <CardHeader><CardTitle>Profil Operator</CardTitle><CardDescription>Ubah nama dan NIP Anda yang terdaftar.</CardDescription></CardHeader>
                         <CardContent>
-                            <Form {...profileForm}>
-                                <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
-                                    <FormField control={profileForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nama Operator</FormLabel><FormControl><Input placeholder="Nama lengkap" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={profileForm.control} name="nip" render={({ field }) => (<FormItem><FormLabel>NIP</FormLabel><FormControl><Input placeholder="NIP (jika ada)" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <Button type="submit" disabled={isProfileSubmitting}>
-                                        {isProfileSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Simpan Perubahan Profil
-                                    </Button>
-                                </form>
-                            </Form>
+                            <Form {...profileForm}><form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+                                <FormField control={profileForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nama Operator</FormLabel><FormControl><Input placeholder="Nama lengkap" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={profileForm.control} name="nip" render={({ field }) => (<FormItem><FormLabel>NIP</FormLabel><FormControl><Input placeholder="NIP (jika ada)" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <Button type="submit" disabled={isProfileSubmitting}>{isProfileSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Simpan Perubahan Profil</Button>
+                            </form></Form>
                         </CardContent>
                     </Card>
                     <Card>
+                        <CardHeader><CardTitle>Ubah Password</CardTitle><CardDescription>Pastikan Anda menggunakan password yang kuat.</CardDescription></CardHeader>
+                        <CardContent>
+                            <Form {...passwordForm}><form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                                <FormField control={passwordForm.control} name="currentPassword" render={({ field }) => (<FormItem><FormLabel>Password Saat Ini</FormLabel><FormControl><Input type="password" placeholder="******" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={passwordForm.control} name="newPassword" render={({ field }) => (<FormItem><FormLabel>Password Baru</FormLabel><FormControl><Input type="password" placeholder="******" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={passwordForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>Konfirmasi Password Baru</FormLabel><FormControl><Input type="password" placeholder="******" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <Button type="submit" disabled={isPasswordSubmitting}>{isPasswordSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Ubah Password</Button>
+                            </form></Form>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* --- KARTU BARU UNTUK CLEANUP (HANYA ADMIN) --- */}
+            {user?.role === 'admin' && (
+                <div className="space-y-8 pt-8">
+                    <Separator />
+                    <h3 className="text-2xl font-bold tracking-tight">Tindakan Administratif</h3>
+                    <Card>
                         <CardHeader>
-                            <CardTitle>Ubah Password</CardTitle>
-                            <CardDescription>Pastikan Anda menggunakan password yang kuat.</CardDescription>
+                            <CardTitle>Pembersihan Data</CardTitle>
+                            <CardDescription>
+                                Jalankan tindakan pemeliharaan data. Lakukan dengan hati-hati karena tindakan ini tidak dapat diurungkan.
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Form {...passwordForm}>
-                                <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
-                                    <FormField control={passwordForm.control} name="currentPassword" render={({ field }) => (<FormItem><FormLabel>Password Saat Ini</FormLabel><FormControl><Input type="password" placeholder="******" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={passwordForm.control} name="newPassword" render={({ field }) => (<FormItem><FormLabel>Password Baru</FormLabel><FormControl><Input type="password" placeholder="******" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={passwordForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>Konfirmasi Password Baru</FormLabel><FormControl><Input type="password" placeholder="******" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <Button type="submit" disabled={isPasswordSubmitting}>
-                                        {isPasswordSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Ubah Password
-                                    </Button>
-                                </form>
-                            </Form>
+                            <Button onClick={handleCleanup} disabled={isCleaning} variant="destructive">
+                                {isCleaning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Bersihkan Data Stok Yatim
+                            </Button>
+                            <p className="text-sm text-muted-foreground mt-2">
+                                Tombol ini akan menghapus semua data stok opname yang penggunanya sudah tidak ada lagi di sistem.
+                            </p>
                         </CardContent>
                     </Card>
                 </div>
