@@ -48,7 +48,6 @@ export default function SettingsPage() {
     const { user } = useUser();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
-    // --- STATE BARU UNTUK CLEANUP ---
     const [isCleaning, setIsCleaning] = useState(false);
 
     const settingsForm = useForm<SettingsFormValues>({ resolver: zodResolver(settingsSchema), defaultValues: {} });
@@ -80,7 +79,6 @@ export default function SettingsPage() {
         }
     }
     
-    // ... (Fungsi onProfileSubmit dan onPasswordSubmit tetap sama)
     const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
     const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
 
@@ -107,9 +105,7 @@ export default function SettingsPage() {
         }
         setIsPasswordSubmitting(false);
     }
-    // --- AKHIR FUNGSI LAMA ---
 
-    // --- HANDLER BARU UNTUK CLEANUP ---
     const handleCleanup = async () => {
         if (!confirm("Anda yakin ingin menghapus semua data stok yang tidak memiliki pengguna? Tindakan ini tidak dapat diurungkan.")) {
             return;
@@ -190,36 +186,64 @@ export default function SettingsPage() {
                 </form>
             </Form>
 
-            {/* ... (Kode untuk pengaturan akun UPTD tetap sama) ... */}
-            {user?.role !== 'admin' && (
-                <div className="space-y-8 pt-8">
-                    <Separator />
-                    <h3 className="text-2xl font-bold tracking-tight">Pengaturan Akun Operator</h3>
-                    <Card>
-                        <CardHeader><CardTitle>Profil Operator</CardTitle><CardDescription>Ubah nama dan NIP Anda yang terdaftar.</CardDescription></CardHeader>
-                        <CardContent>
-                            <Form {...profileForm}><form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
-                                <FormField control={profileForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nama Operator</FormLabel><FormControl><Input placeholder="Nama lengkap" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={profileForm.control} name="nip" render={({ field }) => (<FormItem><FormLabel>NIP</FormLabel><FormControl><Input placeholder="NIP (jika ada)" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <Button type="submit" disabled={isProfileSubmitting}>{isProfileSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Simpan Perubahan Profil</Button>
-                            </form></Form>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader><CardTitle>Ubah Password</CardTitle><CardDescription>Pastikan Anda menggunakan password yang kuat.</CardDescription></CardHeader>
-                        <CardContent>
-                            <Form {...passwordForm}><form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+            {/* --- PERBAIKAN: PENGATURAN AKUN UNTUK SEMUA USER --- */}
+            <div className="space-y-8 pt-8">
+                <Separator />
+                <h3 className="text-2xl font-bold tracking-tight">
+                    {user?.role === 'admin' ? 'Pengaturan Akun Admin' : 'Pengaturan Akun Operator'}
+                </h3>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{user?.role === 'admin' ? 'Profil Admin' : 'Profil Operator'}</CardTitle>
+                        <CardDescription>Ubah nama dan NIP Anda yang terdaftar.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Form {...profileForm}>
+                            <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+                                <FormField control={profileForm.control} name="name" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{user?.role === 'admin' ? 'Nama Admin' : 'Nama Operator'}</FormLabel>
+                                        <FormControl><Input placeholder="Nama lengkap" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                                <FormField control={profileForm.control} name="nip" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>NIP</FormLabel>
+                                        <FormControl><Input placeholder="NIP (jika ada)" {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                                <Button type="submit" disabled={isProfileSubmitting}>
+                                    {isProfileSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Simpan Perubahan Profil
+                                </Button>
+                            </form>
+                        </Form>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Ubah Password</CardTitle>
+                        <CardDescription>Pastikan Anda menggunakan password yang kuat.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Form {...passwordForm}>
+                            <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
                                 <FormField control={passwordForm.control} name="currentPassword" render={({ field }) => (<FormItem><FormLabel>Password Saat Ini</FormLabel><FormControl><Input type="password" placeholder="******" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={passwordForm.control} name="newPassword" render={({ field }) => (<FormItem><FormLabel>Password Baru</FormLabel><FormControl><Input type="password" placeholder="******" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={passwordForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>Konfirmasi Password Baru</FormLabel><FormControl><Input type="password" placeholder="******" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <Button type="submit" disabled={isPasswordSubmitting}>{isPasswordSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Ubah Password</Button>
-                            </form></Form>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
+                                <Button type="submit" disabled={isPasswordSubmitting}>
+                                    {isPasswordSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Ubah Password
+                                </Button>
+                            </form>
+                        </Form>
+                    </CardContent>
+                </Card>
+            </div>
 
-            {/* --- KARTU BARU UNTUK CLEANUP (HANYA ADMIN) --- */}
+            {/* --- KARTU CLEANUP (HANYA ADMIN) --- */}
             {user?.role === 'admin' && (
                 <div className="space-y-8 pt-8">
                     <Separator />
