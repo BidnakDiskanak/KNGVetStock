@@ -1,7 +1,7 @@
 "use client";
 
 import type { User } from '@/lib/types';
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -13,6 +13,7 @@ interface UserContextType {
   logout: () => void;
   isAuthenticated: boolean;
   loading: boolean;
+  reloadUser: (uid: string) => Promise<void>; // <-- Tipe data untuk fungsi baru
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -58,6 +59,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(null);
     router.push('/login');
   };
+  
+  // --- FUNGSI BARU UNTUK MEMUAT ULANG DATA PENGGUNA ---
+  const reloadUser = useCallback(async (uid: string) => {
+    try {
+      const userDocRef = doc(db, "users", uid);
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+        setCurrentUser({ id: userDoc.id, ...userDoc.data() } as User);
+      }
+    } catch (error) {
+      console.error("Gagal memuat ulang data pengguna:", error);
+    }
+  }, []);
+  // --- AKHIR FUNGSI BARU ---
 
   const contextValue = useMemo(() => ({
     user: currentUser,
@@ -65,7 +80,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     logout,
     isAuthenticated: !loading && !!currentUser,
     loading,
-  }), [currentUser, loading]);
+    reloadUser, // <-- Menyediakan fungsi baru melalui context
+  }), [currentUser, loading, reloadUser]);
 
   return (
     <UserContext.Provider value={contextValue}>

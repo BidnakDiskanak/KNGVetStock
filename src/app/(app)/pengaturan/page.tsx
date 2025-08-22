@@ -15,7 +15,6 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/contexts/UserProvider";
 import { getOfficialsAction, updateOfficialsAction } from "@/actions/settings-actions";
-// --- IMPOR FUNGSI BARU ---
 import { updateUserProfileAction, changePasswordAction, cleanupOrphanedStockDataAction } from "@/actions/user-actions";
 import type { User } from "@/lib/types";
 
@@ -45,7 +44,8 @@ const passwordFormSchema = z.object({
 type SettingsFormValues = z.infer<typeof settingsSchema>;
 
 export default function SettingsPage() {
-    const { user } = useUser();
+    // --- PERBAIKAN 1: Ambil fungsi reloadUser dari context ---
+    const { user, reloadUser } = useUser();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [isCleaning, setIsCleaning] = useState(false);
@@ -88,6 +88,8 @@ export default function SettingsPage() {
         const result = await updateUserProfileAction(user.id, values);
         if (result.success) {
             toast({ title: "Sukses", description: "Profil Anda berhasil diperbarui." });
+            // --- PERBAIKAN 2: Panggil fungsi reloadUser setelah update berhasil ---
+            await reloadUser(user.id);
         } else {
             toast({ title: "Gagal", description: result.error, variant: "destructive" });
         }
@@ -136,7 +138,6 @@ export default function SettingsPage() {
             <h2 className="text-3xl font-bold tracking-tight">Pengaturan</h2>
             <Form {...settingsForm}>
                 <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-8">
-                    {/* --- KARTU ALAMAT --- */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Data Alamat</CardTitle>
@@ -152,8 +153,6 @@ export default function SettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
-
-                    {/* --- KARTU PEJABAT --- */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Data Pejabat Penanda Tangan</CardTitle>
@@ -179,14 +178,12 @@ export default function SettingsPage() {
                             )}
                         </CardContent>
                     </Card>
-                    
                     <Button type="submit" disabled={settingsForm.formState.isSubmitting}>
                         {settingsForm.formState.isSubmitting ? 'Menyimpan...' : 'Simpan Pengaturan Umum'}
                     </Button>
                 </form>
             </Form>
 
-            {/* --- PERBAIKAN: PENGATURAN AKUN UNTUK SEMUA USER --- */}
             <div className="space-y-8 pt-8">
                 <Separator />
                 <h3 className="text-2xl font-bold tracking-tight">
@@ -243,7 +240,6 @@ export default function SettingsPage() {
                 </Card>
             </div>
 
-            {/* --- KARTU CLEANUP (HANYA ADMIN) --- */}
             {user?.role === 'admin' && (
                 <div className="space-y-8 pt-8">
                     <Separator />
