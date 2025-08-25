@@ -44,7 +44,6 @@ interface StockOpnameFormSheetProps {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     opnameData: StockOpname | null;
-    // --- FITUR BARU: Prop untuk melanjutkan data lama ---
     continueData?: StockOpname | null;
 }
 
@@ -64,7 +63,9 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
   const debouncedMedicineName = useDebounce(watchedFields.medicineName, 500);
 
   useEffect(() => {
-    if (!isEditMode && debouncedMedicineName && user) {
+    // --- PERBAIKAN: Tambahkan kondisi `!continueData` ---
+    // Logika ini sekarang hanya berjalan jika BUKAN mode edit DAN BUKAN mode lanjutkan.
+    if (!isEditMode && !continueData && debouncedMedicineName && user) {
       const fetchLastStock = async () => {
         setIsFetchingLastStock(true);
         const result = await getLastStockAction(
@@ -76,6 +77,7 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
         if (result.success && result.data) {
           form.setValue('keadaanBulanLaluBaik', result.data.keadaanBulanLaporanBaik);
           form.setValue('keadaanBulanLaluRusak', result.data.keadaanBulanLaporanRusak);
+          
           if (!hasNotified) {
             toast({
               title: "Stok Bulan Lalu Ditemukan",
@@ -94,56 +96,36 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
         fetchLastStock();
       }
     }
-  }, [debouncedMedicineName, watchedFields.expireDate, isEditMode, user, form, toast, hasNotified]);
-  
-  const medicineNameWatcher = form.watch("medicineName");
-  useEffect(() => {
-    setHasNotified(false);
-  }, [medicineNameWatcher]);
+  }, [debouncedMedicineName, watchedFields.expireDate, isEditMode, user, form, toast, continueData]); // <-- Tambahkan continueData ke dependency array
 
-  // --- PERBAIKAN: Logika reset form diubah untuk menangani "Lanjutkan Pencatatan" ---
   useEffect(() => {
-    // Mode 1: Edit data yang sudah ada
     if (opnameData) {
         form.reset({
             ...opnameData,
             expireDate: opnameData.expireDate ? new Date(opnameData.expireDate) : undefined,
         });
-    // Mode 2: Lanjutkan pencatatan dari data bulan lalu
     } else if (continueData) {
         form.reset({
-            opnameDate: new Date(), // Tanggal hari ini
+            opnameDate: new Date(),
             medicineName: continueData.medicineName,
             jenisObat: continueData.jenisObat,
             satuan: continueData.satuan,
             expireDate: continueData.expireDate ? new Date(continueData.expireDate) : undefined,
             asalBarang: continueData.asalBarang,
-            // Mengambil stok akhir bulan lalu menjadi stok awal bulan ini
             keadaanBulanLaluBaik: continueData.keadaanBulanLaporanBaik,
             keadaanBulanLaluRusak: continueData.keadaanBulanLaporanRusak,
-            // Reset pemasukan dan pengeluaran
-            pemasukanBaik: 0,
-            pemasukanRusak: 0,
-            pengeluaranBaik: 0,
-            pengeluaranRusak: 0,
+            pemasukanBaik: 0, pemasukanRusak: 0,
+            pengeluaranBaik: 0, pengeluaranRusak: 0,
             keterangan: "",
         });
-    // Mode 3: Tambah data baru dari awal
     } else {
         form.reset({
             opnameDate: new Date(),
-            medicineName: "",
-            jenisObat: "",
-            satuan: "",
-            asalBarang: "",
-            keadaanBulanLaluBaik: 0,
-            keadaanBulanLaluRusak: 0,
-            pemasukanBaik: 0,
-            pemasukanRusak: 0,
-            pengeluaranBaik: 0,
-            pengeluaranRusak: 0,
-            keterangan: "",
-            expireDate: undefined,
+            medicineName: "", jenisObat: "", satuan: "", asalBarang: "",
+            keadaanBulanLaluBaik: 0, keadaanBulanLaluRusak: 0,
+            pemasukanBaik: 0, pemasukanRusak: 0,
+            pengeluaranBaik: 0, pengeluaranRusak: 0,
+            keterangan: "", expireDate: undefined,
         });
     }
     setHasNotified(false);
@@ -170,7 +152,6 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
         toast({ title: "Error", description: "Pengguna tidak ditemukan.", variant: "destructive" });
         return;
     }
-    // Logika simpan tetap sama, "Lanjutkan" dianggap sebagai "Tambah Data Baru"
     const action = isEditMode
       ? updateStockOpnameAction(opnameData!.id, values, user as User)
       : createStockOpnameAction(values, user as User);
@@ -195,7 +176,6 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
             <div className="py-4">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        {/* ... (Isi form lainnya tetap sama) ... */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField control={form.control} name="opnameDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Tanggal Pencatatan</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={2020} toYear={2030} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )}/>
                             <FormField control={form.control} name="medicineName" render={({ field }) => (<FormItem><FormLabel>Nama Barang</FormLabel><FormControl><Input placeholder="Nama Obat / Barang" {...field} disabled={isEditMode || !!continueData} /></FormControl><FormMessage /></FormItem>)}/>
