@@ -17,15 +17,15 @@ import {
 import type { StockOpname } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
+// --- PERBAIKAN 1: Tambahkan onContinue ke dalam interface ---
 export interface StockOpnameActionHandlers {
   onEdit: (opname: StockOpname) => void;
   onDelete: (opname: StockOpname) => void;
+  onContinue: (opname: StockOpname) => void; // <-- Fungsi baru
 }
 
 export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<StockOpname>[] => [
   {
-    // --- PERBAIKAN DI SINI ---
-    // Menghapus 'id' agar accessorKey digunakan sebagai ID default untuk filter.
     accessorKey: "medicineName",
     header: () => <div className="text-left">Nama Obat</div>,
     cell: ({ row }) => <div className="text-left font-medium">{row.original.medicineName}</div>,
@@ -100,6 +100,10 @@ export const getColumns = (handlers: StockOpnameActionHandlers): ColumnDef<Stock
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+            {/* --- PERBAIKAN 2: Tambahkan tombol "Lanjutkan Pencatatan" --- */}
+            <DropdownMenuItem onClick={() => handlers.onContinue(opname)}>
+              Lanjutkan Pencatatan
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handlers.onEdit(opname)}>
               Ubah Data
             </DropdownMenuItem>

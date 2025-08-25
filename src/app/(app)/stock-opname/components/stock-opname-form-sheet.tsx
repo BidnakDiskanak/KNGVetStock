@@ -260,39 +260,3 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
     </Sheet>
   );
 }
-
-/*
---- CONTOH PENERAPAN DI HALAMAN UTAMA (stock-opname/page.tsx) ---
-
-1. Tambahkan state baru:
-const [opnameToContinue, setOpnameToContinue] = useState<StockOpname | null>(null);
-
-2. Buat handler baru:
-const handleContinue = (opname: StockOpname) => {
-  setSelectedOpname(null); // Pastikan mode edit tidak aktif
-  setOpnameToContinue(opname);
-  setIsSheetOpen(true);
-}
-
-3. Tambahkan handler ke `DataTable` dan `columns`:
-// Di dalam `handlers`
-const handlers: StockOpnameActionHandlers = {
-  onEdit: handleEdit,
-  onDelete: openDeleteDialog,
-  onContinue: handleContinue, // <-- Handler baru
-};
-
-4. Panggil Form Sheet dengan prop baru:
-<StockOpnameFormSheet 
-  isOpen={isSheetOpen}
-  setIsOpen={setIsSheetOpen}
-  opnameData={selectedOpname}
-  continueData={opnameToContinue} // <-- Prop baru
-/>
-
-5. Tambahkan tombol "Lanjutkan Pencatatan" di file `columns.tsx`:
-// Di dalam DropdownMenuContent
-<DropdownMenuItem onClick={() => handlers.onContinue(opname)}>
-  Lanjutkan Pencatatan
-</DropdownMenuItem>
-*/
