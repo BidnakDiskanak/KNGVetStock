@@ -59,18 +59,39 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
     defaultValues: {},
   });
 
-  const watchedFields = useWatch({ control: form.control });
-  const debouncedMedicineName = useDebounce(watchedFields.medicineName, 500);
+  // --- PERBAIKAN 1: Pantau setiap kolom secara spesifik ---
+  const [
+    medicineName,
+    expireDate,
+    keadaanBulanLaluBaik,
+    keadaanBulanLaluRusak,
+    pemasukanBaik,
+    pemasukanRusak,
+    pengeluaranBaik,
+    pengeluaranRusak,
+  ] = useWatch({
+    control: form.control,
+    name: [
+      "medicineName",
+      "expireDate",
+      "keadaanBulanLaluBaik",
+      "keadaanBulanLaluRusak",
+      "pemasukanBaik",
+      "pemasukanRusak",
+      "pengeluaranBaik",
+      "pengeluaranRusak",
+    ],
+  });
+
+  const debouncedMedicineName = useDebounce(medicineName, 500);
 
   useEffect(() => {
-    // --- PERBAIKAN: Tambahkan kondisi `!continueData` ---
-    // Logika ini sekarang hanya berjalan jika BUKAN mode edit DAN BUKAN mode lanjutkan.
     if (!isEditMode && !continueData && debouncedMedicineName && user) {
       const fetchLastStock = async () => {
         setIsFetchingLastStock(true);
         const result = await getLastStockAction(
           debouncedMedicineName,
-          watchedFields.expireDate,
+          expireDate, // Gunakan variabel yang sudah dipantau
           user as User
         );
 
@@ -96,7 +117,7 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
         fetchLastStock();
       }
     }
-  }, [debouncedMedicineName, watchedFields.expireDate, isEditMode, user, form, toast, continueData]); // <-- Tambahkan continueData ke dependency array
+  }, [debouncedMedicineName, expireDate, isEditMode, user, form, toast, continueData]);
 
   useEffect(() => {
     if (opnameData) {
@@ -131,21 +152,39 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
     setHasNotified(false);
   }, [opnameData, continueData, form, isOpen]);
 
+  // --- PERBAIKAN 2: Gunakan variabel spesifik untuk kalkulasi ---
   const calculations = useMemo(() => {
-    const keadaanBulanLaluBaik = Number(watchedFields.keadaanBulanLaluBaik) || 0;
-    const keadaanBulanLaluRusak = Number(watchedFields.keadaanBulanLaluRusak) || 0;
-    const pemasukanBaik = Number(watchedFields.pemasukanBaik) || 0;
-    const pemasukanRusak = Number(watchedFields.pemasukanRusak) || 0;
-    const pengeluaranBaik = Number(watchedFields.pengeluaranBaik) || 0;
-    const pengeluaranRusak = Number(watchedFields.pengeluaranRusak) || 0;
-    const keadaanBulanLaluJml = keadaanBulanLaluBaik + keadaanBulanLaluRusak;
-    const pemasukanJml = pemasukanBaik + pemasukanRusak;
-    const pengeluaranJml = pengeluaranBaik + pengeluaranRusak;
-    const keadaanBulanLaporanBaik = keadaanBulanLaluBaik + pemasukanBaik - pengeluaranBaik;
-    const keadaanBulanLaporanRusak = keadaanBulanLaluRusak + pemasukanRusak - pengeluaranRusak;
+    const kblb = Number(keadaanBulanLaluBaik) || 0;
+    const kblr = Number(keadaanBulanLaluRusak) || 0;
+    const pb = Number(pemasukanBaik) || 0;
+    const pr = Number(pemasukanRusak) || 0;
+    const pgb = Number(pengeluaranBaik) || 0;
+    const pgr = Number(pengeluaranRusak) || 0;
+
+    const keadaanBulanLaluJml = kblb + kblr;
+    const pemasukanJml = pb + pr;
+    const pengeluaranJml = pgb + pgr;
+    
+    const keadaanBulanLaporanBaik = kblb + pb - pgb;
+    const keadaanBulanLaporanRusak = kblr + pr - pgr;
     const keadaanBulanLaporanJml = keadaanBulanLaporanBaik + keadaanBulanLaporanRusak;
-    return { keadaanBulanLaluJml, pemasukanJml, pengeluaranJml, keadaanBulanLaporanBaik, keadaanBulanLaporanRusak, keadaanBulanLaporanJml };
-  }, [watchedFields]);
+
+    return {
+        keadaanBulanLaluJml,
+        pemasukanJml,
+        pengeluaranJml,
+        keadaanBulanLaporanBaik,
+        keadaanBulanLaporanRusak,
+        keadaanBulanLaporanJml
+    };
+  }, [
+      keadaanBulanLaluBaik,
+      keadaanBulanLaluRusak,
+      pemasukanBaik,
+      pemasukanRusak,
+      pengeluaranBaik,
+      pengeluaranRusak,
+  ]);
 
   async function onSubmit(values: StockOpnameFormValues) {
     if (!user) {
