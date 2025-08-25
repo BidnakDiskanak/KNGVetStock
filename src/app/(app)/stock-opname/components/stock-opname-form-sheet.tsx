@@ -84,10 +84,13 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
 
   const debouncedMedicineName = useDebounce(medicineName, 500);
 
+  // --- PERBAIKAN: Logika pencarian stok lama ---
   useEffect(() => {
+    // Pencarian hanya dipicu oleh perubahan `debouncedMedicineName`
     if (!isEditMode && !continueData && debouncedMedicineName && user) {
       const fetchLastStock = async () => {
         setIsFetchingLastStock(true);
+        // `expireDate` tetap dikirim, tapi tidak memicu useEffect ini
         const result = await getLastStockAction(
           debouncedMedicineName,
           expireDate,
@@ -116,14 +119,12 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
         fetchLastStock();
       }
     }
-  }, [debouncedMedicineName, expireDate, isEditMode, user, form, toast, continueData]);
+  // Hapus `expireDate` dari dependency array agar tidak memicu ulang
+  }, [debouncedMedicineName, isEditMode, user, form, toast, continueData]);
 
   useEffect(() => {
     if (opnameData) {
-        form.reset({
-            ...opnameData,
-            expireDate: opnameData.expireDate ? new Date(opnameData.expireDate) : undefined,
-        });
+        form.reset({ ...opnameData, expireDate: opnameData.expireDate ? new Date(opnameData.expireDate) : undefined });
     } else if (continueData) {
         form.reset({
             opnameDate: new Date(),
@@ -158,49 +159,24 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
     const pr = Number(pemasukanRusak) || 0;
     const pgb = Number(pengeluaranBaik) || 0;
     const pgr = Number(pengeluaranRusak) || 0;
-
     const keadaanBulanLaluJml = kblb + kblr;
     const pemasukanJml = pb + pr;
     const pengeluaranJml = pgb + pgr;
-    
     const keadaanBulanLaporanBaik = kblb + pb - pgb;
     const keadaanBulanLaporanRusak = kblr + pr - pgr;
     const keadaanBulanLaporanJml = keadaanBulanLaporanBaik + keadaanBulanLaporanRusak;
-
-    return {
-        keadaanBulanLaluJml,
-        pemasukanJml,
-        pengeluaranJml,
-        keadaanBulanLaporanBaik,
-        keadaanBulanLaporanRusak,
-        keadaanBulanLaporanJml
-    };
-  }, [
-      keadaanBulanLaluBaik,
-      keadaanBulanLaluRusak,
-      pemasukanBaik,
-      pemasukanRusak,
-      pengeluaranBaik,
-      pengeluaranRusak,
-  ]);
+    return { keadaanBulanLaluJml, pemasukanJml, pengeluaranJml, keadaanBulanLaporanBaik, keadaanBulanLaporanRusak, keadaanBulanLaporanJml };
+  }, [ keadaanBulanLaluBaik, keadaanBulanLaluRusak, pemasukanBaik, pemasukanRusak, pengeluaranBaik, pengeluaranRusak ]);
 
   async function onSubmit(values: StockOpnameFormValues) {
     if (!user) {
         toast({ title: "Error", description: "Pengguna tidak ditemukan.", variant: "destructive" });
         return;
     }
-
-    // --- PERBAIKAN: Gabungkan data form dengan data kalkulasi ---
-    const payload = {
-        ...values,
-        ...calculations, // Menambahkan semua hasil perhitungan ke data yang akan disimpan
-    };
-    // --- AKHIR PERBAIKAN ---
-
+    const payload = { ...values, ...calculations };
     const action = isEditMode
-      ? updateStockOpnameAction(opnameData!.id, payload, user as User) // Kirim payload lengkap
-      : createStockOpnameAction(payload, user as User); // Kirim payload lengkap
-      
+      ? updateStockOpnameAction(opnameData!.id, payload, user as User)
+      : createStockOpnameAction(payload, user as User);
     const result = await action;
     if (result.success) {
       toast({ title: "Sukses", description: `Data stock opname berhasil ${isEditMode ? 'diperbarui' : 'disimpan'}.` });
