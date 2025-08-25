@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { StockOpname } from '@/lib/types';
 import { format } from "date-fns";
@@ -14,14 +14,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DataTable } from './components/data-table';
 import { getColumns, type StockOpnameActionHandlers } from './components/columns';
 import { StockOpnameFormSheet } from './components/stock-opname-form-sheet';
-import { deleteStockOpnameAction } from '@/actions/stock-opname-actions';
+// --- PERBAIKAN: Impor fungsi hapus yang baru ---
+import { deleteStockOpnameBatchAction } from '@/actions/stock-opname-actions';
 
 export default function StockOpnamePage() {
   const [stockOpnames, setStockOpnames] = useState<StockOpname[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedOpname, setSelectedOpname] = useState<StockOpname | null>(null);
-  // --- PERBAIKAN 1: Tambahkan state baru ---
   const [opnameToContinue, setOpnameToContinue] = useState<StockOpname | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [opnameToDelete, setOpnameToDelete] = useState<StockOpname | null>(null);
@@ -49,16 +49,12 @@ export default function StockOpnamePage() {
           const data = doc.data();
           const opnameDate = data.opnameDate?.toDate();
           const expireDate = data.expireDate?.toDate();
-
           if (!opnameDate || isNaN(opnameDate.getTime())) {
               console.warn(`Melewati dokumen ${doc.id} karena opnameDate tidak valid.`);
               return;
           }
-
           opnamesData.push({
-              id: doc.id,
-              ...data,
-              opnameDate: opnameDate,
+              id: doc.id, ...data, opnameDate: opnameDate,
               expireDate: expireDate && !isNaN(expireDate.getTime()) ? expireDate : undefined,
           } as StockOpname);
       });
@@ -78,38 +74,41 @@ export default function StockOpnamePage() {
       });
       
       latestRecords.sort((a, b) => b.opnameDate.getTime() - a.opnameDate.getTime());
-
       setStockOpnames(latestRecords);
       setLoading(false);
     }, (error) => {
         console.error("Gagal mengambil data stock opname:", error);
         setLoading(false);
-        toast({
-            title: "Gagal Memuat Data",
-            description: "Tidak dapat mengambil data. Coba lagi nanti.",
-            variant: "destructive",
-        })
+        toast({ title: "Gagal Memuat Data", description: "Tidak dapat mengambil data. Coba lagi nanti.", variant: "destructive" });
     });
 
     return () => unsubscribe();
-    
   }, [user, toast]);
+
+  // --- PERBAIKAN: Handler untuk memastikan state bersih saat form ditutup ---
+  const handleSheetOpenChange = (open: boolean) => {
+    setIsSheetOpen(open);
+    if (!open) {
+        // Saat form ditutup, reset semua state agar bersih saat dibuka lagi
+        setSelectedOpname(null);
+        setOpnameToContinue(null);
+    }
+  }
 
   const handleAdd = () => {
     setSelectedOpname(null);
-    setOpnameToContinue(null); // Reset continue state
+    setOpnameToContinue(null);
     setIsSheetOpen(true);
   }
 
   const handleEdit = (opname: StockOpname) => {
     setSelectedOpname(opname);
-    setOpnameToContinue(null); // Reset continue state
+    setOpnameToContinue(null);
     setIsSheetOpen(true);
   }
 
-  // --- PERBAIKAN 2: Buat fungsi handler baru ---
   const handleContinue = (opname: StockOpname) => {
-    setSelectedOpname(null); // Pastikan mode edit tidak aktif
+    setSelectedOpname(null);
     setOpnameToContinue(opname);
     setIsSheetOpen(true);
   };
@@ -119,15 +118,21 @@ export default function StockOpnamePage() {
     setIsDeleteDialogOpen(true);
   };
 
+  // --- PERBAIKAN: Gunakan fungsi hapus batch yang baru ---
   const handleDelete = async () => {
     if (!opnameToDelete) return;
     
-    const result = await deleteStockOpnameAction(opnameToDelete.id);
+    // Panggil action baru dengan mengirimkan nama dan tanggal kadaluarsa
+    const result = await deleteStockOpnameBatchAction({
+        medicineName: opnameToDelete.medicineName,
+        expireDate: opnameToDelete.expireDate,
+        userId: opnameToDelete.userId,
+    });
 
     if (result.success) {
         toast({
             title: "Data Dihapus",
-            description: `Data stock opname untuk ${opnameToDelete.medicineName} telah berhasil dihapus.`,
+            description: `Semua riwayat data untuk ${opnameToDelete.medicineName} telah berhasil dihapus.`,
         });
     } else {
         toast({
@@ -140,7 +145,6 @@ export default function StockOpnamePage() {
     setOpnameToDelete(null);
   };
 
-  // --- PERBAIKAN 3: Sertakan handler baru ---
   const handlers: StockOpnameActionHandlers = {
     onEdit: handleEdit,
     onDelete: openDeleteDialog,
@@ -153,10 +157,7 @@ export default function StockOpnamePage() {
       return (
         <div className="h-full flex-1 flex-col space-y-8 p-2 md:p-8 md:flex">
           <div className="flex items-center justify-between space-y-2">
-            <div>
-              <Skeleton className="h-8 w-48 mb-2" />
-              <Skeleton className="h-4 w-72" />
-            </div>
+            <div> <Skeleton className="h-8 w-48 mb-2" /> <Skeleton className="h-4 w-72" /> </div>
           </div>
           <Skeleton className="h-96 w-full" />
         </div>
@@ -169,10 +170,9 @@ export default function StockOpnamePage() {
         <DataTable data={stockOpnames} columns={columns} onAdd={handleAdd} filterColumn="medicineName"/>
       </div>
 
-      {/* --- PERBAIKAN 4: Kirim data ke form --- */}
       <StockOpnameFormSheet 
         isOpen={isSheetOpen}
-        setIsOpen={setIsSheetOpen}
+        setIsOpen={handleSheetOpenChange} // Gunakan handler baru
         opnameData={selectedOpname}
         continueData={opnameToContinue}
       />
@@ -182,13 +182,13 @@ export default function StockOpnamePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Anda yakin?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tindakan ini akan menghapus data stock opname untuk <strong>{opnameToDelete?.medicineName}</strong> pada tanggal <strong>{opnameToDelete?.opnameDate ? format(opnameToDelete.opnameDate, "d LLL yyyy", { locale: id }) : ''}</strong> secara permanen.
+              Tindakan ini akan menghapus <strong>semua riwayat data</strong> untuk <strong>{opnameToDelete?.medicineName}</strong> dengan tanggal kadaluarsa <strong>{opnameToDelete?.expireDate ? format(opnameToDelete.expireDate, "d LLL yyyy", { locale: id }) : 'Tanpa ED'}</strong> secara permanen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-              Hapus
+              Hapus Semua
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
