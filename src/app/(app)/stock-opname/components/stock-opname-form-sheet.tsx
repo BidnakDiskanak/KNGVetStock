@@ -59,7 +59,6 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
     defaultValues: {},
   });
 
-  // --- PERBAIKAN 1: Pantau setiap kolom secara spesifik ---
   const [
     medicineName,
     expireDate,
@@ -91,7 +90,7 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
         setIsFetchingLastStock(true);
         const result = await getLastStockAction(
           debouncedMedicineName,
-          expireDate, // Gunakan variabel yang sudah dipantau
+          expireDate,
           user as User
         );
 
@@ -152,7 +151,6 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
     setHasNotified(false);
   }, [opnameData, continueData, form, isOpen]);
 
-  // --- PERBAIKAN 2: Gunakan variabel spesifik untuk kalkulasi ---
   const calculations = useMemo(() => {
     const kblb = Number(keadaanBulanLaluBaik) || 0;
     const kblr = Number(keadaanBulanLaluRusak) || 0;
@@ -191,9 +189,18 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueDa
         toast({ title: "Error", description: "Pengguna tidak ditemukan.", variant: "destructive" });
         return;
     }
+
+    // --- PERBAIKAN: Gabungkan data form dengan data kalkulasi ---
+    const payload = {
+        ...values,
+        ...calculations, // Menambahkan semua hasil perhitungan ke data yang akan disimpan
+    };
+    // --- AKHIR PERBAIKAN ---
+
     const action = isEditMode
-      ? updateStockOpnameAction(opnameData!.id, values, user as User)
-      : createStockOpnameAction(values, user as User);
+      ? updateStockOpnameAction(opnameData!.id, payload, user as User) // Kirim payload lengkap
+      : createStockOpnameAction(payload, user as User); // Kirim payload lengkap
+      
     const result = await action;
     if (result.success) {
       toast({ title: "Sukses", description: `Data stock opname berhasil ${isEditMode ? 'diperbarui' : 'disimpan'}.` });
