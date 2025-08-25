@@ -21,6 +21,8 @@ export default function StockOpnamePage() {
   const [loading, setLoading] = useState(true);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedOpname, setSelectedOpname] = useState<StockOpname | null>(null);
+  // --- PERBAIKAN 1: Tambahkan state baru ---
+  const [opnameToContinue, setOpnameToContinue] = useState<StockOpname | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [opnameToDelete, setOpnameToDelete] = useState<StockOpname | null>(null);
   const { toast } = useToast();
@@ -61,8 +63,6 @@ export default function StockOpnamePage() {
           } as StockOpname);
       });
 
-      // --- PERBAIKAN LOGIKA DI SINI ---
-      // 1. Kelompokkan semua data berdasarkan batch unik (nama obat + tanggal ED)
       const recordsByBatch: { [key: string]: StockOpname[] } = {};
       for (const record of opnamesData) {
           const expireDateString = record.expireDate ? record.expireDate.toISOString() : 'no-expiry';
@@ -73,17 +73,13 @@ export default function StockOpnamePage() {
           recordsByBatch[key].push(record);
       }
 
-      // 2. Dari setiap kelompok, ambil hanya data yang paling baru
       const latestRecords = Object.values(recordsByBatch).map(records => {
           return records.sort((a, b) => b.opnameDate.getTime() - a.opnameDate.getTime())[0];
       });
       
-      // 3. Urutkan hasil akhir berdasarkan tanggal opname terbaru
       latestRecords.sort((a, b) => b.opnameDate.getTime() - a.opnameDate.getTime());
 
       setStockOpnames(latestRecords);
-      // --- AKHIR PERBAIKAN ---
-
       setLoading(false);
     }, (error) => {
         console.error("Gagal mengambil data stock opname:", error);
@@ -101,13 +97,22 @@ export default function StockOpnamePage() {
 
   const handleAdd = () => {
     setSelectedOpname(null);
+    setOpnameToContinue(null); // Reset continue state
     setIsSheetOpen(true);
   }
 
   const handleEdit = (opname: StockOpname) => {
     setSelectedOpname(opname);
+    setOpnameToContinue(null); // Reset continue state
     setIsSheetOpen(true);
   }
+
+  // --- PERBAIKAN 2: Buat fungsi handler baru ---
+  const handleContinue = (opname: StockOpname) => {
+    setSelectedOpname(null); // Pastikan mode edit tidak aktif
+    setOpnameToContinue(opname);
+    setIsSheetOpen(true);
+  };
 
   const openDeleteDialog = (opname: StockOpname) => {
     setOpnameToDelete(opname);
@@ -135,9 +140,11 @@ export default function StockOpnamePage() {
     setOpnameToDelete(null);
   };
 
+  // --- PERBAIKAN 3: Sertakan handler baru ---
   const handlers: StockOpnameActionHandlers = {
     onEdit: handleEdit,
     onDelete: openDeleteDialog,
+    onContinue: handleContinue,
   };
   
   const columns = useMemo(() => getColumns(handlers), [handlers]);
@@ -162,10 +169,12 @@ export default function StockOpnamePage() {
         <DataTable data={stockOpnames} columns={columns} onAdd={handleAdd} filterColumn="medicineName"/>
       </div>
 
+      {/* --- PERBAIKAN 4: Kirim data ke form --- */}
       <StockOpnameFormSheet 
         isOpen={isSheetOpen}
         setIsOpen={setIsSheetOpen}
         opnameData={selectedOpname}
+        continueData={opnameToContinue}
       />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
