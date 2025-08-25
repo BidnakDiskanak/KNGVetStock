@@ -22,13 +22,12 @@ import type { StockOpname, User } from "@/lib/types";
 import { useUser } from "@/contexts/UserProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 
-// --- PERBAIKAN 1: Jadikan expireDate opsional ---
 const formSchema = z.object({
   opnameDate: z.date({ required_error: "Tanggal stock opname wajib diisi." }),
   medicineName: z.string().min(2, "Nama barang minimal 2 karakter."),
   jenisObat: z.string().optional(),
   satuan: z.string().optional(),
-  expireDate: z.date().optional(), // <-- Diubah menjadi opsional
+  expireDate: z.date().optional(),
   asalBarang: z.string().optional(),
   keadaanBulanLaluBaik: z.coerce.number().min(0).default(0),
   keadaanBulanLaluRusak: z.coerce.number().min(0).default(0),
@@ -45,9 +44,11 @@ interface StockOpnameFormSheetProps {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     opnameData: StockOpname | null;
+    // --- FITUR BARU: Prop untuk melanjutkan data lama ---
+    continueData?: StockOpname | null;
 }
 
-export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpnameFormSheetProps) {
+export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData, continueData }: StockOpnameFormSheetProps) {
   const { toast } = useToast();
   const { user } = useUser();
   const isEditMode = !!opnameData;
@@ -61,43 +62,73 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
 
   const watchedFields = useWatch({ control: form.control });
   const debouncedMedicineName = useDebounce(watchedFields.medicineName, 500);
-  const debouncedExpireDate = useDebounce(watchedFields.expireDate, 500);
 
   useEffect(() => {
-    if (!isEditMode && debouncedMedicineName && debouncedExpireDate && user && !hasNotified) {
-        const fetchLastStock = async () => {
-            setIsFetchingLastStock(true);
-            const result = await getLastStockAction(debouncedMedicineName, debouncedExpireDate!, user as User);
-            if (result.success && result.data) {
-                form.setValue('keadaanBulanLaluBaik', result.data.keadaanBulanLaporanBaik);
-                form.setValue('keadaanBulanLaluRusak', result.data.keadaanBulanLaporanRusak);
-                toast({
-                    title: "Stok Bulan Lalu Ditemukan",
-                    description: `Stok terakhir untuk ${debouncedMedicineName} berhasil dimuat.`,
-                });
-                setHasNotified(true); 
-            } else {
-                form.setValue('keadaanBulanLaluBaik', 0);
-                form.setValue('keadaanBulanLaluRusak', 0);
-            }
-            setIsFetchingLastStock(false);
-        };
+    if (!isEditMode && debouncedMedicineName && user) {
+      const fetchLastStock = async () => {
+        setIsFetchingLastStock(true);
+        const result = await getLastStockAction(
+          debouncedMedicineName,
+          watchedFields.expireDate,
+          user as User
+        );
+
+        if (result.success && result.data) {
+          form.setValue('keadaanBulanLaluBaik', result.data.keadaanBulanLaporanBaik);
+          form.setValue('keadaanBulanLaluRusak', result.data.keadaanBulanLaporanRusak);
+          if (!hasNotified) {
+            toast({
+              title: "Stok Bulan Lalu Ditemukan",
+              description: `Stok terakhir untuk ${debouncedMedicineName} berhasil dimuat.`,
+            });
+            setHasNotified(true);
+          }
+        } else {
+          form.setValue('keadaanBulanLaluBaik', 0);
+          form.setValue('keadaanBulanLaluRusak', 0);
+        }
+        setIsFetchingLastStock(false);
+      };
+
+      if (debouncedMedicineName.length >= 2) {
         fetchLastStock();
+      }
     }
-  }, [debouncedMedicineName, debouncedExpireDate, isEditMode, user, form, toast, hasNotified]);
+  }, [debouncedMedicineName, watchedFields.expireDate, isEditMode, user, form, toast, hasNotified]);
   
   const medicineNameWatcher = form.watch("medicineName");
   useEffect(() => {
     setHasNotified(false);
-  }, [medicineNameWatcher])
+  }, [medicineNameWatcher]);
 
-
+  // --- PERBAIKAN: Logika reset form diubah untuk menangani "Lanjutkan Pencatatan" ---
   useEffect(() => {
+    // Mode 1: Edit data yang sudah ada
     if (opnameData) {
         form.reset({
             ...opnameData,
             expireDate: opnameData.expireDate ? new Date(opnameData.expireDate) : undefined,
         });
+    // Mode 2: Lanjutkan pencatatan dari data bulan lalu
+    } else if (continueData) {
+        form.reset({
+            opnameDate: new Date(), // Tanggal hari ini
+            medicineName: continueData.medicineName,
+            jenisObat: continueData.jenisObat,
+            satuan: continueData.satuan,
+            expireDate: continueData.expireDate ? new Date(continueData.expireDate) : undefined,
+            asalBarang: continueData.asalBarang,
+            // Mengambil stok akhir bulan lalu menjadi stok awal bulan ini
+            keadaanBulanLaluBaik: continueData.keadaanBulanLaporanBaik,
+            keadaanBulanLaluRusak: continueData.keadaanBulanLaporanRusak,
+            // Reset pemasukan dan pengeluaran
+            pemasukanBaik: 0,
+            pemasukanRusak: 0,
+            pengeluaranBaik: 0,
+            pengeluaranRusak: 0,
+            keterangan: "",
+        });
+    // Mode 3: Tambah data baru dari awal
     } else {
         form.reset({
             opnameDate: new Date(),
@@ -116,7 +147,7 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
         });
     }
     setHasNotified(false);
-  }, [opnameData, form, isOpen]);
+  }, [opnameData, continueData, form, isOpen]);
 
   const calculations = useMemo(() => {
     const keadaanBulanLaluBaik = Number(watchedFields.keadaanBulanLaluBaik) || 0;
@@ -139,6 +170,7 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
         toast({ title: "Error", description: "Pengguna tidak ditemukan.", variant: "destructive" });
         return;
     }
+    // Logika simpan tetap sama, "Lanjutkan" dianggap sebagai "Tambah Data Baru"
     const action = isEditMode
       ? updateStockOpnameAction(opnameData!.id, values, user as User)
       : createStockOpnameAction(values, user as User);
@@ -163,9 +195,10 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
             <div className="py-4">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        {/* ... (Isi form lainnya tetap sama) ... */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField control={form.control} name="opnameDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Tanggal Pencatatan</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={2020} toYear={2030} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )}/>
-                            <FormField control={form.control} name="medicineName" render={({ field }) => (<FormItem><FormLabel>Nama Barang</FormLabel><FormControl><Input placeholder="Nama Obat / Barang" {...field} disabled={isEditMode} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="medicineName" render={({ field }) => (<FormItem><FormLabel>Nama Barang</FormLabel><FormControl><Input placeholder="Nama Obat / Barang" {...field} disabled={isEditMode || !!continueData} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={form.control} name="jenisObat" render={({ field }) => (<FormItem><FormLabel>Jenis Barang</FormLabel><FormControl><Input placeholder="Vaksin, Alkes, dll" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={form.control} name="satuan" render={({ field }) => (<FormItem><FormLabel>Satuan</FormLabel><FormControl><Input placeholder="Botol, Pcs, dll" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                         </div>
@@ -201,20 +234,15 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <FormControl>
-                                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")} disabled={isEditMode}>
+                                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")} disabled={isEditMode || !!continueData}>
                                                     {field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
                                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                                 </Button>
                                             </FormControl>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={2020} toYear={2030} initialFocus />
-                                        </PopoverContent>
+                                        <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={2020} toYear={2030} initialFocus /></PopoverContent>
                                     </Popover>
-                                    {/* --- PERBAIKAN 2: Tambahkan deskripsi --- */}
-                                    <FormDescription>
-                                        Kosongkan jika barang tidak memiliki tanggal kadaluarsa.
-                                    </FormDescription>
+                                    <FormDescription>Kosongkan jika barang tidak memiliki tanggal kadaluarsa.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}/>
@@ -232,3 +260,39 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
     </Sheet>
   );
 }
+
+/*
+--- CONTOH PENERAPAN DI HALAMAN UTAMA (stock-opname/page.tsx) ---
+
+1. Tambahkan state baru:
+const [opnameToContinue, setOpnameToContinue] = useState<StockOpname | null>(null);
+
+2. Buat handler baru:
+const handleContinue = (opname: StockOpname) => {
+  setSelectedOpname(null); // Pastikan mode edit tidak aktif
+  setOpnameToContinue(opname);
+  setIsSheetOpen(true);
+}
+
+3. Tambahkan handler ke `DataTable` dan `columns`:
+// Di dalam `handlers`
+const handlers: StockOpnameActionHandlers = {
+  onEdit: handleEdit,
+  onDelete: openDeleteDialog,
+  onContinue: handleContinue, // <-- Handler baru
+};
+
+4. Panggil Form Sheet dengan prop baru:
+<StockOpnameFormSheet 
+  isOpen={isSheetOpen}
+  setIsOpen={setIsSheetOpen}
+  opnameData={selectedOpname}
+  continueData={opnameToContinue} // <-- Prop baru
+/>
+
+5. Tambahkan tombol "Lanjutkan Pencatatan" di file `columns.tsx`:
+// Di dalam DropdownMenuContent
+<DropdownMenuItem onClick={() => handlers.onContinue(opname)}>
+  Lanjutkan Pencatatan
+</DropdownMenuItem>
+*/
