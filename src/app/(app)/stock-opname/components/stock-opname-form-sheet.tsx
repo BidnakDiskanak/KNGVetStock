@@ -22,12 +22,13 @@ import type { StockOpname, User } from "@/lib/types";
 import { useUser } from "@/contexts/UserProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 
+// --- PERBAIKAN 1: Jadikan expireDate opsional ---
 const formSchema = z.object({
   opnameDate: z.date({ required_error: "Tanggal stock opname wajib diisi." }),
-  medicineName: z.string().min(2, "Nama obat minimal 2 karakter."),
+  medicineName: z.string().min(2, "Nama barang minimal 2 karakter."),
   jenisObat: z.string().optional(),
   satuan: z.string().optional(),
-  expireDate: z.date({ required_error: "Tanggal kadaluarsa wajib diisi." }),
+  expireDate: z.date().optional(), // <-- Diubah menjadi opsional
   asalBarang: z.string().optional(),
   keadaanBulanLaluBaik: z.coerce.number().min(0).default(0),
   keadaanBulanLaluRusak: z.coerce.number().min(0).default(0),
@@ -51,7 +52,6 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
   const { user } = useUser();
   const isEditMode = !!opnameData;
   const [isFetchingLastStock, setIsFetchingLastStock] = useState(false);
-  // --- PERBAIKAN 1: State untuk melacak notifikasi ---
   const [hasNotified, setHasNotified] = useState(false);
 
   const form = useForm<StockOpnameFormValues>({
@@ -60,15 +60,10 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
   });
 
   const watchedFields = useWatch({ control: form.control });
-  const debouncedMedicineName = useDebounce(watchedFields.medicineName, 500); // Jeda 500ms agar tidak terlalu sering
+  const debouncedMedicineName = useDebounce(watchedFields.medicineName, 500);
   const debouncedExpireDate = useDebounce(watchedFields.expireDate, 500);
 
   useEffect(() => {
-    // --- PERBAIKAN 2: Logika pengecekan diubah ---
-    // Pengecekan hanya berjalan jika:
-    // 1. Bukan mode edit
-    // 2. Nama obat dan tanggal ED sudah diisi (setelah debounce)
-    // 3. Notifikasi untuk batch ini belum pernah muncul
     if (!isEditMode && debouncedMedicineName && debouncedExpireDate && user && !hasNotified) {
         const fetchLastStock = async () => {
             setIsFetchingLastStock(true);
@@ -80,10 +75,8 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
                     title: "Stok Bulan Lalu Ditemukan",
                     description: `Stok terakhir untuk ${debouncedMedicineName} berhasil dimuat.`,
                 });
-                // Tandai bahwa notifikasi sudah muncul agar tidak berulang
                 setHasNotified(true); 
             } else {
-                // Jika tidak ditemukan, pastikan stok bulan lalu kembali ke 0
                 form.setValue('keadaanBulanLaluBaik', 0);
                 form.setValue('keadaanBulanLaluRusak', 0);
             }
@@ -92,6 +85,12 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
         fetchLastStock();
     }
   }, [debouncedMedicineName, debouncedExpireDate, isEditMode, user, form, toast, hasNotified]);
+  
+  const medicineNameWatcher = form.watch("medicineName");
+  useEffect(() => {
+    setHasNotified(false);
+  }, [medicineNameWatcher])
+
 
   useEffect(() => {
     if (opnameData) {
@@ -116,7 +115,6 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
             expireDate: undefined,
         });
     }
-    // --- PERBAIKAN 3: Reset status notifikasi saat form dibuka/di-reset ---
     setHasNotified(false);
   }, [opnameData, form, isOpen]);
 
@@ -127,23 +125,13 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
     const pemasukanRusak = Number(watchedFields.pemasukanRusak) || 0;
     const pengeluaranBaik = Number(watchedFields.pengeluaranBaik) || 0;
     const pengeluaranRusak = Number(watchedFields.pengeluaranRusak) || 0;
-
     const keadaanBulanLaluJml = keadaanBulanLaluBaik + keadaanBulanLaluRusak;
     const pemasukanJml = pemasukanBaik + pemasukanRusak;
     const pengeluaranJml = pengeluaranBaik + pengeluaranRusak;
-    
     const keadaanBulanLaporanBaik = keadaanBulanLaluBaik + pemasukanBaik - pengeluaranBaik;
     const keadaanBulanLaporanRusak = keadaanBulanLaluRusak + pemasukanRusak - pengeluaranRusak;
     const keadaanBulanLaporanJml = keadaanBulanLaporanBaik + keadaanBulanLaporanRusak;
-
-    return {
-        keadaanBulanLaluJml,
-        pemasukanJml,
-        pengeluaranJml,
-        keadaanBulanLaporanBaik,
-        keadaanBulanLaporanRusak,
-        keadaanBulanLaporanJml
-    };
+    return { keadaanBulanLaluJml, pemasukanJml, pengeluaranJml, keadaanBulanLaporanBaik, keadaanBulanLaporanRusak, keadaanBulanLaporanJml };
   }, [watchedFields]);
 
   async function onSubmit(values: StockOpnameFormValues) {
@@ -151,25 +139,15 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
         toast({ title: "Error", description: "Pengguna tidak ditemukan.", variant: "destructive" });
         return;
     }
-
     const action = isEditMode
       ? updateStockOpnameAction(opnameData!.id, values, user as User)
       : createStockOpnameAction(values, user as User);
-
     const result = await action;
-
     if (result.success) {
-      toast({
-        title: "Sukses",
-        description: `Data stock opname berhasil ${isEditMode ? 'diperbarui' : 'disimpan'}.`,
-      });
+      toast({ title: "Sukses", description: `Data stock opname berhasil ${isEditMode ? 'diperbarui' : 'disimpan'}.` });
       setIsOpen(false);
     } else {
-      toast({
-        title: "Gagal",
-        description: result.error || "Terjadi kesalahan.",
-        variant: "destructive",
-      });
+      toast({ title: "Gagal", description: result.error || "Terjadi kesalahan.", variant: "destructive" });
     }
   }
 
@@ -179,58 +157,66 @@ export function StockOpnameFormSheet({ isOpen, setIsOpen, opnameData }: StockOpn
             <SheetHeader>
                 <SheetTitle>{isEditMode ? 'Ubah Data Stock Opname' : 'Tambah Data Stock Opname'}</SheetTitle>
                 <SheetDescription>
-                    {isEditMode ? 'Ubah detail data di bawah ini.' : 'Isi nama obat dan tanggal kadaluarsa untuk memuat stok terakhir secara otomatis.'}
+                    {isEditMode ? 'Ubah detail data di bawah ini.' : 'Isi nama barang dan tanggal kadaluarsa (jika ada) untuk memuat stok terakhir.'}
                 </SheetDescription>
             </SheetHeader>
             <div className="py-4">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="opnameDate" render={({ field }) => (
-                                <FormItem className="flex flex-col"><FormLabel>Tanggal Pencatatan</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={2020} toYear={2030} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>
-                            )}/>
-                            <FormField control={form.control} name="medicineName" render={({ field }) => (<FormItem><FormLabel>Nama Obat</FormLabel><FormControl><Input placeholder="Nama Obat" {...field} disabled={isEditMode} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="jenisObat" render={({ field }) => (<FormItem><FormLabel>Jenis Obat</FormLabel><FormControl><Input placeholder="Vaksin, Antibiotik, dll" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="satuan" render={({ field }) => (<FormItem><FormLabel>Satuan</FormLabel><FormControl><Input placeholder="Botol, Strip, dll" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="opnameDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Tanggal Pencatatan</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={2020} toYear={2030} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )}/>
+                            <FormField control={form.control} name="medicineName" render={({ field }) => (<FormItem><FormLabel>Nama Barang</FormLabel><FormControl><Input placeholder="Nama Obat / Barang" {...field} disabled={isEditMode} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="jenisObat" render={({ field }) => (<FormItem><FormLabel>Jenis Barang</FormLabel><FormControl><Input placeholder="Vaksin, Alkes, dll" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="satuan" render={({ field }) => (<FormItem><FormLabel>Satuan</FormLabel><FormControl><Input placeholder="Botol, Pcs, dll" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                         </div>
                         <Separator />
-                        
                         <div className="grid grid-cols-4 gap-x-4 gap-y-2 items-end">
                             <div className="font-medium">Kondisi</div>
                             <div className="font-medium text-center">Baik</div>
                             <div className="font-medium text-center">Rusak</div>
                             <div className="font-medium text-center text-blue-600">Jumlah</div>
-
-                            <div className="font-medium flex items-center">
-                                Keadaan Bulan Lalu
-                                {isFetchingLastStock && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-                            </div>
+                            <div className="font-medium flex items-center"> Keadaan Bulan Lalu {isFetchingLastStock && <Loader2 className="ml-2 h-4 w-4 animate-spin" />} </div>
                             <FormField control={form.control} name="keadaanBulanLaluBaik" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" readOnly /></FormControl></FormItem>)}/>
                             <FormField control={form.control} name="keadaanBulanLaluRusak" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" readOnly /></FormControl></FormItem>)}/>
                             <Input type="number" value={calculations.keadaanBulanLaluJml} className="text-center font-bold text-blue-600" readOnly />
-
                             <div className="font-medium">Pemasukan</div>
                             <FormField control={form.control} name="pemasukanBaik" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" /></FormControl></FormItem>)}/>
                             <FormField control={form.control} name="pemasukanRusak" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" /></FormControl></FormItem>)}/>
                             <Input type="number" value={calculations.pemasukanJml} className="text-center font-bold text-blue-600" readOnly />
-
                             <div className="font-medium">Pengeluaran</div>
                             <FormField control={form.control} name="pengeluaranBaik" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" /></FormControl></FormItem>)}/>
                             <FormField control={form.control} name="pengeluaranRusak" render={({ field }) => (<FormItem><FormControl><Input type="number" {...field} className="text-center" /></FormControl></FormItem>)}/>
                             <Input type="number" value={calculations.pengeluaranJml} className="text-center font-bold text-blue-600" readOnly />
-                            
                             <div className="col-span-4"><Separator className="my-2"/></div>
-
                             <div className="font-medium text-green-600">Keadaan s/d Bulan Laporan</div>
                             <Input type="number" value={calculations.keadaanBulanLaporanBaik} className="text-center font-bold text-green-600" readOnly />
                             <Input type="number" value={calculations.keadaanBulanLaporanRusak} className="text-center font-bold text-green-600" readOnly />
                             <Input type="number" value={calculations.keadaanBulanLaporanJml} className="text-center font-bold text-green-600" readOnly />
                         </div>
-                        
                         <Separator />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField control={form.control} name="expireDate" render={({ field }) => (
-                                <FormItem className="flex flex-col"><FormLabel>Tanggal Kadaluarsa</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")} disabled={isEditMode}>{field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={2020} toYear={2030} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem>
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Tanggal Kadaluarsa</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")} disabled={isEditMode}>
+                                                    {field.value ? format(field.value, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={2020} toYear={2030} initialFocus />
+                                        </PopoverContent>
+                                    </Popover>
+                                    {/* --- PERBAIKAN 2: Tambahkan deskripsi --- */}
+                                    <FormDescription>
+                                        Kosongkan jika barang tidak memiliki tanggal kadaluarsa.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
                             )}/>
                             <FormField control={form.control} name="asalBarang" render={({ field }) => (<FormItem><FormLabel>Asal Barang</FormLabel><FormControl><Input placeholder="Pusat, Provinsi, dll" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                         </div>
