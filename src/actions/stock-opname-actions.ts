@@ -2,35 +2,33 @@
 
 import { getFirebaseAdminApp } from "@/lib/firebase-admin-app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
-import type { User } from "@/lib/types";
+import type { User, StockOpname } from "@/lib/types";
 import { z } from "zod";
 
-// --- PERBAIKAN 1: Buat skema validasi yang lengkap ---
-// Skema ini mencakup semua data dari form DAN hasil kalkulasi
+// Skema validasi lengkap untuk data yang disimpan
 const stockOpnameSchema = z.object({
   opnameDate: z.date(),
-  medicineName: z.string().min(2),
+  medicineName: z.string().min(2, "Nama obat minimal 2 karakter."),
   jenisObat: z.string().optional(),
   satuan: z.string().optional(),
-  expireDate: z.date().optional(),
+  expireDate: z.date().optional().nullable(),
   asalBarang: z.string().optional(),
-  keadaanBulanLaluBaik: z.number().min(0),
-  keadaanBulanLaluRusak: z.number().min(0),
-  pemasukanBaik: z.number().min(0),
-  pemasukanRusak: z.number().min(0),
-  pengeluaranBaik: z.number().min(0),
-  pengeluaranRusak: z.number().min(0),
+  keadaanBulanLaluBaik: z.coerce.number().min(0).default(0),
+  keadaanBulanLaluRusak: z.coerce.number().min(0).default(0),
+  pemasukanBaik: z.coerce.number().min(0).default(0),
+  pemasukanRusak: z.coerce.number().min(0).default(0),
+  pengeluaranBaik: z.coerce.number().min(0).default(0),
+  pengeluaranRusak: z.coerce.number().min(0).default(0),
   keterangan: z.string().optional(),
-  // Tambahkan field hasil kalkulasi
-  keadaanBulanLaluJml: z.number(),
-  pemasukanJml: z.number(),
-  pengeluaranJml: z.number(),
-  keadaanBulanLaporanBaik: z.number(),
-  keadaanBulanLaporanRusak: z.number(),
-  keadaanBulanLaporanJml: z.number(),
+  // Kolom kalkulasi
+  keadaanBulanLaluJml: z.coerce.number().min(0).default(0),
+  pemasukanJml: z.coerce.number().min(0).default(0),
+  pengeluaranJml: z.coerce.number().min(0).default(0),
+  keadaanBulanLaporanBaik: z.coerce.number().min(0).default(0),
+  keadaanBulanLaporanRusak: z.coerce.number().min(0).default(0),
+  keadaanBulanLaporanJml: z.coerce.number().min(0).default(0),
 });
 
-type StockOpnameData = z.infer<typeof stockOpnameSchema>;
 
 type ActionResponse = {
     success: boolean;
@@ -38,8 +36,8 @@ type ActionResponse = {
     error?: string;
 }
 
-// --- PERBAIKAN 2: Implementasi fungsi create ---
-export async function createStockOpnameAction(formData: StockOpnameData, user: User): Promise<ActionResponse> {
+// Fungsi untuk membuat data
+export async function createStockOpnameAction(formData: any, user: User): Promise<ActionResponse> {
   try {
     const validatedData = stockOpnameSchema.parse(formData);
     const app = getFirebaseAdminApp();
@@ -60,8 +58,8 @@ export async function createStockOpnameAction(formData: StockOpnameData, user: U
   }
 }
 
-// --- PERBAIKAN 3: Implementasi fungsi update ---
-export async function updateStockOpnameAction(id: string, formData: StockOpnameData, user: User): Promise<ActionResponse> {
+// Fungsi untuk update data
+export async function updateStockOpnameAction(id: string, formData: any, user: User): Promise<ActionResponse> {
   try {
     const validatedData = stockOpnameSchema.parse(formData);
     const app = getFirebaseAdminApp();
@@ -69,8 +67,8 @@ export async function updateStockOpnameAction(id: string, formData: StockOpnameD
 
     const docRef = db.collection("stock-opnames").doc(id);
     await docRef.update({
-        ...validatedData,
-        updatedAt: Timestamp.now(),
+      ...validatedData,
+      updatedAt: Timestamp.now(),
     });
 
     return { success: true };
@@ -81,7 +79,7 @@ export async function updateStockOpnameAction(id: string, formData: StockOpnameD
 }
 
 // Fungsi untuk mengambil stok terakhir
-export async function getLastStockAction(medicineName: string, expireDate: Date | undefined, user: User): Promise<ActionResponse> {
+export async function getLastStockAction(medicineName: string, expireDate: Date | undefined | null, user: User): Promise<ActionResponse> {
     try {
         const app = getFirebaseAdminApp();
         const db = getFirestore(app);
@@ -92,7 +90,7 @@ export async function getLastStockAction(medicineName: string, expireDate: Date 
             .where("userId", "==", user.id)
             .orderBy("opnameDate", "desc")
             .limit(1);
-
+        
         if (expireDate) {
             q = q.where("expireDate", "==", Timestamp.fromDate(expireDate));
         } else {
@@ -104,16 +102,18 @@ export async function getLastStockAction(medicineName: string, expireDate: Date 
         if (snapshot.empty) {
             return { success: true, data: null };
         }
-
-        const lastStock = snapshot.docs[0].data();
+        
+        const lastStock = snapshot.docs[0].data() as StockOpname;
         return { success: true, data: lastStock };
+
     } catch (error: any) {
         console.error("Error getting last stock:", error);
         return { success: false, error: "Gagal mengambil data stok terakhir." };
     }
 }
 
-// Fungsi hapus batch
+
+// --- FUNGSI HAPUS BATCH YANG DIPERBAIKI ---
 interface DeleteBatchPayload {
     medicineName: string;
     expireDate?: Date;
@@ -126,25 +126,31 @@ export async function deleteStockOpnameBatchAction(payload: DeleteBatchPayload):
         const db = getFirestore(app);
         const stockOpnamesRef = db.collection("stock-opnames");
 
+        // HANYA query berdasarkan nama dan user, ambil semua riwayatnya
         let q = stockOpnamesRef
             .where("medicineName", "==", payload.medicineName)
             .where("userId", "==", payload.userId);
 
-        if (payload.expireDate) {
-            q = q.where("expireDate", "==", Timestamp.fromDate(payload.expireDate));
-        } else {
-            q = q.where("expireDate", "==", null);
-        }
-
         const snapshot = await q.get();
+
         if (snapshot.empty) {
             return { success: true };
         }
 
         const batch = db.batch();
+        
+        // Filter di sisi server untuk mencocokkan tanggal kadaluarsa (atau ketiadaannya)
         snapshot.docs.forEach(doc => {
-            batch.delete(doc.ref);
+            const data = doc.data();
+            const docExpireDate = data.expireDate ? data.expireDate.toDate().toISOString() : null;
+            const payloadExpireDate = payload.expireDate ? payload.expireDate.toISOString() : null;
+
+            // Hapus jika tanggal kadaluarsanya cocok (atau jika keduanya tidak punya tanggal)
+            if (docExpireDate === payloadExpireDate) {
+                batch.delete(doc.ref);
+            }
         });
+
         await batch.commit();
 
         return { success: true };
