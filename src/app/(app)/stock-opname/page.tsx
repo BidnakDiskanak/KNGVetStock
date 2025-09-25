@@ -14,7 +14,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DataTable } from './components/data-table';
 import { getColumns, type StockOpnameActionHandlers } from './components/columns';
 import { StockOpnameFormSheet } from './components/stock-opname-form-sheet';
-// --- PERBAIKAN 1: Impor fungsi hapus yang baru ---
 import { deleteStockOpnameBatchAction } from '@/actions/stock-opname-actions';
 
 export default function StockOpnamePage() {
@@ -40,7 +39,8 @@ export default function StockOpnamePage() {
     if (user.role !== 'admin') {
         q = query(baseQuery, where("userId", "==", user.id));
     } else {
-        q = query(baseQuery, where("userRole", "==", "admin"));
+        // Untuk admin, tampilkan semua data (tanpa filter user)
+        q = query(baseQuery);
     }
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -66,7 +66,7 @@ export default function StockOpnamePage() {
       const recordsByBatch: { [key: string]: StockOpname[] } = {};
       for (const record of opnamesData) {
           const expireDateString = record.expireDate ? record.expireDate.toISOString() : 'no-expiry';
-          const key = `${record.medicineName}|${expireDateString}`;
+          const key = `${record.medicineName}|${expireDateString}|${record.userId}`; // Tambahkan userId agar unik per pengguna
           if (!recordsByBatch[key]) {
               recordsByBatch[key] = [];
           }
@@ -118,15 +118,16 @@ export default function StockOpnamePage() {
     setIsDeleteDialogOpen(true);
   };
 
-  // --- PERBAIKAN 2: Ubah logika handleDelete ---
+  // --- PERBAIKAN LOGIKA HAPUS ---
   const handleDelete = async () => {
-    if (!opnameToDelete || !user) return;
+    if (!opnameToDelete) return;
     
     // Siapkan payload untuk fungsi hapus batch
+    // Gunakan `userId` dari data yang akan dihapus, bukan dari user yang sedang login
     const payload = {
       medicineName: opnameToDelete.medicineName,
       expireDate: opnameToDelete.expireDate,
-      userId: user.id, // Pastikan user ID dikirim
+      userId: opnameToDelete.userId, // INI PERBAIKANNYA
     };
 
     const result = await deleteStockOpnameBatchAction(payload);
@@ -153,6 +154,7 @@ export default function StockOpnamePage() {
     onContinue: handleContinue,
   };
   
+  // Gunakan useMemo dengan dependency yang benar
   const columns = useMemo(() => getColumns(handlers), [handlers]);
 
   if (loading) {
@@ -201,3 +203,4 @@ export default function StockOpnamePage() {
     </>
   );
 }
+
