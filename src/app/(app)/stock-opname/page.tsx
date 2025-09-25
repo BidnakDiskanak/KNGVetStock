@@ -95,6 +95,16 @@ export default function StockOpnamePage() {
     
   }, [user, toast]);
 
+  // --- HANDLER BARU: Memastikan state bersih saat form ditutup ---
+  const handleSheetOpenChange = (open: boolean) => {
+    setIsSheetOpen(open);
+    if (!open) {
+      // Saat form ditutup, reset semua state agar bersih saat dibuka lagi
+      setSelectedOpname(null);
+      setOpnameToContinue(null);
+    }
+  }
+
   const handleAdd = () => {
     setSelectedOpname(null);
     setOpnameToContinue(null);
@@ -118,16 +128,13 @@ export default function StockOpnamePage() {
     setIsDeleteDialogOpen(true);
   };
 
-  // --- PERBAIKAN LOGIKA HAPUS ---
   const handleDelete = async () => {
     if (!opnameToDelete) return;
     
-    // Siapkan payload untuk fungsi hapus batch
-    // Gunakan `userId` dari data yang akan dihapus, bukan dari user yang sedang login
     const payload = {
       medicineName: opnameToDelete.medicineName,
       expireDate: opnameToDelete.expireDate,
-      userId: opnameToDelete.userId, // INI PERBAIKANNYA
+      userId: opnameToDelete.userId,
     };
 
     const result = await deleteStockOpnameBatchAction(payload);
@@ -154,7 +161,6 @@ export default function StockOpnamePage() {
     onContinue: handleContinue,
   };
   
-  // Gunakan useMemo dengan dependency yang benar
   const columns = useMemo(() => getColumns(handlers), [handlers]);
 
   if (loading) {
@@ -179,7 +185,7 @@ export default function StockOpnamePage() {
 
       <StockOpnameFormSheet 
         isOpen={isSheetOpen}
-        setIsOpen={setIsSheetOpen}
+        setIsOpen={handleSheetOpenChange} // Gunakan handler baru
         opnameData={selectedOpname}
         continueData={opnameToContinue}
       />
