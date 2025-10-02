@@ -113,7 +113,7 @@ export async function getLastStockAction(medicineName: string, expireDate: Date 
 }
 
 
-// --- FUNGSI HAPUS BATCH YANG DIPERBAIKI ---
+// --- FUNGSI HAPUS BATCH YANG SUDAH AMAN ---
 interface DeleteBatchPayload {
     medicineName: string;
     expireDate?: Date;
@@ -126,10 +126,12 @@ export async function deleteStockOpnameBatchAction(payload: DeleteBatchPayload):
         const db = getFirestore(app);
         const stockOpnamesRef = db.collection("stock-opnames");
 
-        // HANYA query berdasarkan nama dan user, ambil semua riwayatnya
+        // --- INI PERBAIKANNYA ---
+        // Query SEKARANG menyertakan `userId` untuk memastikan hanya data milik
+        // pengguna yang benar yang akan diproses untuk dihapus.
         let q = stockOpnamesRef
             .where("medicineName", "==", payload.medicineName)
-            .where("userId", "==", payload.userId);
+            .where("userId", "==", payload.userId); // <-- Filter WAJIB agar tidak salah hapus
 
         const snapshot = await q.get();
 
